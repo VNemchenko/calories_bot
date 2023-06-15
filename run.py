@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, filters, Callb
 
 from config import TELEGRAM_BOT_TOKEN
 from chatgpt_utils import get_nutrition_info
-from sql import (create_table, create_users_table, get_data_from_db, add_entry,
+from sql import (get_data_from_db, add_entry,
                  get_user, add_user, update_payment_date)
 
 
@@ -71,6 +71,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    create_users_table()
-    create_table()
+    # create_users_table()
+    # create_table()
     main()
