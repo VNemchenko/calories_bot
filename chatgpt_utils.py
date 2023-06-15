@@ -1,6 +1,8 @@
 import openai
 import json
+
 from config import OPENAI_API_KEY
+from decorators import retry
 
 openai.api_key = OPENAI_API_KEY
 
@@ -19,6 +21,7 @@ def extract_json(input_string):
     return json_data
 
 
+@retry((ValueError, json.JSONDecodeError), tries=3, delay=2, backoff=2)
 def get_nutrition_info(prompt):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -31,4 +34,17 @@ def get_nutrition_info(prompt):
     input_string = input_string.replace("'", '"')  # Замените одинарные кавычки на двойные для корректного JSON
     json_data = extract_json(input_string)
 
+    # Проверка ключей и типов данных
+    required_keys = ['fat', 'protein', 'carbs', 'calories', 'text']
+    for key in required_keys:
+        if key not in json_data:
+            raise ValueError(f"Key '{key}' is missing in the response")
+        if key in ['fat', 'protein', 'carbs', 'calories']:
+            try:
+                json_data[key] = float(json_data[key])  # Преобразование к float
+            except (ValueError, TypeError):
+                raise ValueError(f"Value for '{key}' should be a number and convertible to float")
+        elif key == 'text':
+            if not isinstance(json_data[key], str):
+                raise ValueError(f"Value for 'text' should be a string")
     return json_data

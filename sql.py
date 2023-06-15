@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func
-from sqlalchemy.sql import text
 from datetime import datetime
 from config import DATABASE, DB_USER, DB_PASSWORD
 
