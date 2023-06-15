@@ -1,0 +1,59 @@
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+# Environments
+.env2
+#.env
+#.venv
+#env/
+#venv/
+#ENV/
+#env.bak/
+#venv.bak/
+
+# Django
+*.sqlite3
+
+# Flask
+instance/
+
+# Spyder
+.spyderproject
+.spyder/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Tests
+tests/
+*.pytest_cache/
+
+# Docker
+#*.dockerignore
+#Dockerfile
+#docker-compose.yml
+
