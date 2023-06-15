@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func
 from datetime import datetime
-from config import DATABASE, DB_USER, DB_PASSWORD
+from config import HOST, DATABASE, DB_USER, DB_PASSWORD
 
-engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@host.docker.internal:5432/{DATABASE}')
+engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}')
 metadata = MetaData()
 
 # Определение структуры таблицы
