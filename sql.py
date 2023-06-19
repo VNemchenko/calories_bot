@@ -10,27 +10,27 @@ metadata = MetaData()
 def create_users_table():
     insp = inspect(engine)
     if not insp.has_table("users"):
-        users = Table('users', metadata,
-                      Column('user_id', String, primary_key=True),
-                      Column('start_date', String),
-                      Column('last_payment_date', String))
-        users.create(engine)
+        users_table = Table('users', metadata,
+                            Column('user_id', String, primary_key=True),
+                            Column('start_date', String),
+                            Column('last_payment_date', String))
+        users_table.create(engine)
     else:
-        global users_table
         users_table = Table('users', metadata, autoload_with=engine)
+    return users_table
 
-def get_user(user_id):
+def get_user(users_table, user_id):
     with engine.connect() as connection:
-        query = select([users_table]).where(users_table.c.user_id == user_id)
+        query = select().select_from(users_table).where(users_table.c.user_id == user_id)
         result = connection.execute(query).fetchone()
         return result
 
-def add_user(user_id):
+def add_user(users_table, user_id):
     with engine.connect() as connection:
         date = datetime.now().strftime('%d-%m-%Y')
         connection.execute(users_table.insert().values(user_id=user_id, start_date=date, last_payment_date=date))
 
-def update_payment_date(user_id):
+def update_payment_date(users_table, user_id):
     with engine.connect() as connection:
         date = datetime.now().strftime('%d-%m-%Y')
         connection.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
@@ -39,21 +39,21 @@ def update_payment_date(user_id):
 def create_nutrition_table():
     insp = inspect(engine)
     if not insp.has_table("nutrition"):
-        nutrition = Table('nutrition', metadata,
-                          Column('date', String, primary_key=True),
-                          Column('user_id', String, primary_key=True),
-                          Column('fat', Integer),
-                          Column('protein', Integer),
-                          Column('carbs', Integer),
-                          Column('calories', Integer),
-                          Column('text', String))
-        nutrition.create(engine)
+        nutrition_table = Table('nutrition', metadata,
+                                Column('date', String, primary_key=True),
+                                Column('user_id', String, primary_key=True),
+                                Column('fat', Integer),
+                                Column('protein', Integer),
+                                Column('carbs', Integer),
+                                Column('calories', Integer),
+                                Column('text', String))
+        nutrition_table.create(engine)
     else:
-        global nutrition_table
         nutrition_table = Table('nutrition', metadata, autoload_with=engine)
+    return nutrition_table
 
 
-def add_entry(user_id, json_data):
+def add_entry(nutrition_table, user_id, json_data):
     with engine.connect() as connection:
         date = datetime.now().strftime('%d-%m-%Y')  # форматируем текущую дату в строку dd-mm-yyyy
         query = select([nutrition_table]).where(nutrition_table.c.date == date, nutrition_table.c.user_id == user_id)
@@ -86,7 +86,7 @@ def add_entry(user_id, json_data):
         return f"Принял и запомнил. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} ккал"
 
 
-def get_data_from_db(user_id, date_str):
+def get_data_from_db(nutrition_table, user_id, date_str):
     with engine.connect() as connection:
         try:
             # Парсим дату из строки
@@ -113,5 +113,5 @@ def get_data_from_db(user_id, date_str):
 
 
 # Определение структуры таблицы
-create_users_table()
-create_nutrition_table()
+users_table = create_users_table()
+nutrition_table = create_nutrition_table()
