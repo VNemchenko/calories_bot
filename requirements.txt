@@ -1,4 +1,4 @@
 openai
 sqlalchemy
-python-telegram-bot
+python-telegram-bot==13.7
 psycopg2-binary

@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
 
 from config import TELEGRAM_BOT_TOKEN
 from chatgpt_utils import get_nutrition_info
@@ -62,7 +62,7 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(filters.Text & ~filters.Command, process_message))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, process_message))
     dispatcher.add_handler(CallbackQueryHandler(button))
 
     updater.start_polling()
