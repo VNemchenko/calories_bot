@@ -11,7 +11,7 @@ def create_users_table():
     insp = inspect(engine)
     if not insp.has_table("users"):
         users_table = Table('users', metadata,
-                            Column('user_id', String, primary_key=True),
+                            Column('user_id', Integer, primary_key=True),
                             Column('start_date', String),
                             Column('last_payment_date', String))
         users_table.create(engine)
@@ -41,7 +41,7 @@ def create_nutrition_table():
     if not insp.has_table("nutrition"):
         nutrition_table = Table('nutrition', metadata,
                                 Column('date', String, primary_key=True),
-                                Column('user_id', String, primary_key=True),
+                                Column('user_id', Integer, primary_key=True),
                                 Column('fat', Integer),
                                 Column('protein', Integer),
                                 Column('carbs', Integer),
