@@ -1,7 +1,7 @@
 import openai
 import json
 
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, logger
 from decorators import retry
 
 openai.api_key = OPENAI_API_KEY
@@ -31,6 +31,7 @@ def get_nutrition_info(prompt):
         ],
     )
     input_string = response.choices[0].message.content
+    logger.info(f'function get_nutrition_info answer from API {input_string=}')
     input_string = input_string.replace("'", '"')  # Замените одинарные кавычки на двойные для корректного JSON
     json_data = extract_json(input_string)
 
@@ -38,13 +39,16 @@ def get_nutrition_info(prompt):
     required_keys = ['fat', 'protein', 'carbs', 'calories', 'text']
     for key in required_keys:
         if key not in json_data:
-            raise ValueError(f"Key '{key}' is missing in the response")
+            logger.info(f"Key '{key}' is missing in the response")
+            return None
         if key in ['fat', 'protein', 'carbs', 'calories']:
             try:
                 json_data[key] = float(json_data[key])  # Преобразование к float
             except (ValueError, TypeError):
-                raise ValueError(f"Value for '{key}' should be a number and convertible to float")
+                logger.info(f"Value for '{key}' should be a number and convertible to float")
+                return None
         elif key == 'text':
             if not isinstance(json_data[key], str):
-                raise ValueError(f"Value for 'text' should be a string")
+                logger.info(f"Value for 'text' should be a string")
+                return None
     return json_data

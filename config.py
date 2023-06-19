@@ -1,4 +1,9 @@
 import os
+from loguru import logger
+import sys
+
+logger.add(sys.stdout, format="{time} {level} {message}", level="DEBUG")
+
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
