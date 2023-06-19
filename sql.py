@@ -110,8 +110,3 @@ def get_data_from_db(nutrition_table, user_id, date_str):
 
         except ValueError:
             return "Ошибка: дата должна быть в формате DD.MM.YY."
-
-
-# Определение структуры таблицы
-users_table = create_users_table()
-nutrition_table = create_nutrition_table()
