@@ -10,13 +10,16 @@ nutrition_table = Table('nutrition', metadata, autoload_with=engine)
 users_table = Table('users', metadata, autoload_with=engine)
 
 
-# def create_users_table():
-#     if not engine.dialect.has_table(engine, "users"):
-#         users = Table('users', metadata,
-#                       Column('user_id', String, primary_key=True),
-#                       Column('start_date', String),
-#                       Column('last_payment_date', String))
-#         users.create(engine)
+def create_users_table():
+    if not engine.dialect.has_table(engine, "users"):
+        users = Table('users', metadata,
+                      Column('user_id', String, primary_key=True),
+                      Column('start_date', String),
+                      Column('last_payment_date', String))
+        users.create(engine)
+    else:
+        global users_table
+        users_table = Table('users', metadata, autoload_with=engine)
 
 def get_user(user_id):
     with engine.connect() as connection:
@@ -35,17 +38,20 @@ def update_payment_date(user_id):
         connection.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
 
 
-# def create_table():
-#     if not engine.dialect.has_table(engine, "nutrition"):
-#         nutrition = Table('nutrition', metadata,
-#                           Column('date', String, primary_key=True),
-#                           Column('user_id', String, primary_key=True),
-#                           Column('fat', Integer),
-#                           Column('protein', Integer),
-#                           Column('carbs', Integer),
-#                           Column('calories', Integer),
-#                           Column('text', String))
-#         nutrition.create(engine)
+def create_table():
+    if not engine.dialect.has_table(engine, "nutrition"):
+        nutrition = Table('nutrition', metadata,
+                          Column('date', String, primary_key=True),
+                          Column('user_id', String, primary_key=True),
+                          Column('fat', Integer),
+                          Column('protein', Integer),
+                          Column('carbs', Integer),
+                          Column('calories', Integer),
+                          Column('text', String))
+        nutrition.create(engine)
+    else:
+        global nutrition_table
+        nutrition_table = Table('nutrition', metadata, autoload_with=engine)
 
 
 def add_entry(user_id, json_data):
