@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func, inspect
 from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD
 
@@ -8,7 +8,8 @@ metadata = MetaData()
 
 
 def create_users_table():
-    if not engine.dialect.has_table(engine, "users"):
+    insp = inspect(engine)
+    if not insp.has_table("users"):
         users = Table('users', metadata,
                       Column('user_id', String, primary_key=True),
                       Column('start_date', String),
@@ -36,7 +37,8 @@ def update_payment_date(user_id):
 
 
 def create_nutrition_table():
-    if not engine.dialect.has_table(engine, "nutrition"):
+    insp = inspect(engine)
+    if not insp.has_table("nutrition"):
         nutrition = Table('nutrition', metadata,
                           Column('date', String, primary_key=True),
                           Column('user_id', String, primary_key=True),
@@ -113,5 +115,3 @@ def get_data_from_db(user_id, date_str):
 # Определение структуры таблицы
 create_users_table()
 create_nutrition_table()
-users_table = Table('users', metadata, autoload_with=engine)
-nutrition_table = Table('nutrition', metadata, autoload_with=engine)
