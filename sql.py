@@ -2,12 +2,9 @@ from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, 
 from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD
 
+
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}')
 metadata = MetaData()
-
-# Определение структуры таблицы
-nutrition_table = Table('nutrition', metadata, autoload_with=engine)
-users_table = Table('users', metadata, autoload_with=engine)
 
 
 def create_users_table():
@@ -38,7 +35,7 @@ def update_payment_date(user_id):
         connection.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
 
 
-def create_table():
+def create_nutrition_table():
     if not engine.dialect.has_table(engine, "nutrition"):
         nutrition = Table('nutrition', metadata,
                           Column('date', String, primary_key=True),
@@ -111,3 +108,10 @@ def get_data_from_db(user_id, date_str):
 
         except ValueError:
             return "Ошибка: дата должна быть в формате DD.MM.YY."
+
+
+# Определение структуры таблицы
+create_users_table()
+create_nutrition_table()
+users_table = Table('users', metadata, autoload_with=engine)
+nutrition_table = Table('nutrition', metadata, autoload_with=engine)
