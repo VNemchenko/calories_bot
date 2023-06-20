@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
@@ -6,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from config import TELEGRAM_BOT_TOKEN, logger
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry,
-                 get_user, add_user, update_payment_date, datetime)
+                 get_user, add_user, update_payment_date)
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -30,9 +31,31 @@ def process_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     message_text = update.message.text
 
+    # словарь для получения даты по ключевым словам
+    words_to_dates = {
+        "сегодня": lambda: datetime.now().date(),
+        "today": lambda: datetime.now().date(),
+        "вчера": lambda: (datetime.now() - timedelta(days=1)).date(),
+        "yesterday": lambda: (datetime.now() - timedelta(days=1)).date(),
+        "позавчера": lambda: (datetime.now() - timedelta(days=2)).date()
+    }
+
+    date_obj = None
+
+    # проверка на наличие даты в формате dd.mm.yy
     if re.search(r'\b\d{2}\.\d{2}\.\d{2}\b', message_text):
         logger.info(f'function process_message started with date founded in  {message_text=}')
-        data = get_data_from_db(user_id, message_text)
+        date_obj = datetime.strptime(message_text, "%d.%m.%y").date()
+
+    # проверка на наличие ключевых слов в сообщении
+    else:
+        for word in message_text.split():
+            if word.lower() in words_to_dates:
+                date_obj = words_to_dates[word.lower()]()
+                break
+
+    if date_obj:
+        data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
         json_data = get_nutrition_info(message_text)

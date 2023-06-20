@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
 from sqlalchemy.orm import sessionmaker, declarative_base
-from datetime import datetime
+from run import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
 
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
@@ -77,25 +77,24 @@ def add_entry(user_id, json_data):
 
         session.commit()
 
-        return f"Принял и запомнил. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} ккал"
+        return f"Записано. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} Ккал."
 
 
-def get_data_from_db(user_id, date_str):
+def get_data_from_db(user_id, date):
     logger.info(f'function get_data_from_db started')
     with Session() as session:
         try:
-            date_obj = datetime.strptime(date_str, "%d.%m.%y").date()
-            logger.info(f'function get_data_from_db started with {date_obj=}')
+            logger.info(f'function get_data_from_db started with {date=}')
 
-            nutrition = session.query(Nutrition).filter(Nutrition.date == date_obj,
+            nutrition = session.query(Nutrition).filter(Nutrition.date == date,
                                                         Nutrition.user_id == user_id).first()
 
             if nutrition:
                 return f"Дата: {nutrition.date}\n" \
-                       f"Жиры: {nutrition.fat}\n" \
-                       f"Белки: {nutrition.protein}\n" \
-                       f"Углеводы: {nutrition.carbs}\n" \
-                       f"Калории: {nutrition.calories}\n" \
+                       f"Жиры: {nutrition.fat} гр.\n" \
+                       f"Белки: {nutrition.protein} гр.\n" \
+                       f"Углеводы: {nutrition.carbs} гр.\n" \
+                       f"Калории: {nutrition.calories} Ккал.\n" \
                        f"({nutrition.text})"
             else:
                 return "Нет данных для этой даты."
