@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
 from sqlalchemy.orm import sessionmaker, declarative_base
-from run import datetime
+from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
 
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
@@ -100,4 +100,4 @@ def get_data_from_db(user_id, date):
                 return "Нет данных для этой даты."
 
         except ValueError:
-            return "Ошибка: дата должна быть в формате DD.MM.YY."
+            return "Ошибка: дата должна быть в формате ДД.ММ.ГГ."

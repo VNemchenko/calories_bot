@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
@@ -7,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from config import TELEGRAM_BOT_TOKEN, logger
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry,
-                 get_user, add_user, update_payment_date)
+                 get_user, add_user, update_payment_date, datetime)
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -24,7 +24,7 @@ def start(update: Update, context: CallbackContext) -> None:
             context.bot.send_message(chat_id=update.effective_chat.id, text='Здорово, вы пользуетесь моей помощью уже неделю! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на оплату сервера')
     else:
         add_user(user_id)
-        context.bot.send_message(chat_id=update.effective_chat.id, text='Привет, начнем подсчет калорий! Просто пиши то, что ты поел, чтобы не забыть, а если захочешь узнать итог, отправь дату в формате ДД.ММ.ГГ')
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Привет! Давайте начнём отслеживание калорий. Просто сообщайте мне, что вы съели, чтобы не забывать. Если захотите увидеть общий подсчёт, отправьте дату в формате ДД.ММ.ГГ.')
 
 
 def process_message(update: Update, context: CallbackContext) -> None:
@@ -58,11 +58,12 @@ def process_message(update: Update, context: CallbackContext) -> None:
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
-        json_data = get_nutrition_info(message_text)
-        if json_data:
+        try:
+            json_data = get_nutrition_info(message_text)
             message = add_entry(user_id, json_data)
-        else:
-            message = f'Извините, не удалось подсчитать калории, попробуйте сформулировать фразу иначе'
+        except Exception as e:
+            logger.error(f'Error from chatgpt_utils {e}')
+            message = f'К сожалению, не получилось рассчитать калорийность. Попробуйте описать продукты иначе, или, если это напиток, укажите его калорийность, и я подсчитаю содержание углеводов.'
 
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
