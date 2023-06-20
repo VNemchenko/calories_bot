@@ -1,11 +1,12 @@
 from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func, inspect, DateTime, Date
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
 
 
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
+Session = sessionmaker(bind=engine)
 metadata = MetaData()
-
 
 def create_users_table():
     insp = inspect(engine)
@@ -23,22 +24,24 @@ def create_users_table():
 
 def get_user(users_table, user_id):
     logger.info(f'function get_user started')
-    with engine.connect() as connection:
+    with Session() as session:
         query = select().select_from(users_table).where(users_table.c.user_id == user_id)
-        result = connection.execute(query).fetchone()
-        return result
+        result = session.execute(query).fetchone()
+    return result
 
 def add_user(users_table, user_id):
     logger.info(f'function add_user started. Type of user is {type(user_id)}')
-    with engine.connect() as connection:
-        date = datetime.now()  # теперь date - это объект datetime, а не строка
-        connection.execute(users_table.insert().values(user_id=user_id, start_date=date, last_payment_date=date))
+    with Session() as session:
+        date = datetime.now()
+        session.execute(users_table.insert().values(user_id=user_id, start_date=date, last_payment_date=date))
+        session.commit()
 
 def update_payment_date(users_table, user_id):
     logger.info(f'function update_payment_date started')
-    with engine.connect() as connection:
-        date = datetime.now()  # теперь date - это объект datetime, а не строка
-        connection.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
+    with Session() as session:
+        date = datetime.now()
+        session.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
+        session.commit()
 
 
 def create_nutrition_table():
@@ -62,9 +65,9 @@ def create_nutrition_table():
 
 def add_test_entry(nutrition_table):
     try:
-        with engine.connect() as connection:
-            date = datetime.now().date()  # используем только дату, без времени
-            connection.execute(
+        with Session() as session:
+            date = datetime.now().date()
+            session.execute(
                 nutrition_table.insert().values(
                     date=date,
                     user_id=1,
@@ -74,22 +77,23 @@ def add_test_entry(nutrition_table):
                     calories=40,
                     text='test entry')
             )
+            session.commit()
     except Exception as e:
         logger.error(f"Error occurred while trying to insert a test entry: {e}")
 
 
 def add_entry(nutrition_table, user_id, json_data):
-    add_test_entry(nutrition_table)
-    with engine.connect() as connection:
-        date = datetime.now().date()  # теперь date - это объект date, а не строка
+    # add_test_entry(nutrition_table)
+    with Session() as session:
+        date = datetime.now().date()
         logger.info(f'function add_entry received data {json_data=}')
         query = select().select_from(nutrition_table).where(nutrition_table.c.date == date, nutrition_table.c.user_id == user_id)
-        result = connection.execute(query).fetchone()
+        result = session.execute(query).fetchone()
 
         if result:
             # Обновляем существующую запись
             logger.info(f'function add_entry started with exist record')
-            connection.execute(
+            session.execute(
                 nutrition_table.update().where(nutrition_table.c.date == date,
                                                nutrition_table.c.user_id == user_id).values(
                     fat=nutrition_table.c.fat + json_data['fat'],
@@ -101,7 +105,7 @@ def add_entry(nutrition_table, user_id, json_data):
         else:
             # Добавляем новую запись
             logger.info(f'function add_entry started with new record')
-            connection.execute(
+            session.execute(
                 nutrition_table.insert().values(
                     date=date,
                     user_id=user_id,
@@ -112,12 +116,14 @@ def add_entry(nutrition_table, user_id, json_data):
                     text=json_data['text'])
             )
 
+        session.commit()
+
         return f"Принял и запомнил. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} ккал"
 
 
 def get_data_from_db(nutrition_table, user_id, date_str):
     logger.info(f'function get_data_from_db started')
-    with engine.connect() as connection:
+    with Session() as session:
         try:
             # Парсим дату из строки
             date_obj = datetime.strptime(date_str, "%d.%m.%y").date()
@@ -125,7 +131,7 @@ def get_data_from_db(nutrition_table, user_id, date_str):
 
             query = select().select_from(nutrition_table).where(nutrition_table.c.date == date_obj,
                                                     nutrition_table.c.user_id == user_id)
-            result = connection.execute(query).fetchone()
+            result = session.execute(query).fetchone()
 
             if result:
                 # Возвращаем данные в виде текста
