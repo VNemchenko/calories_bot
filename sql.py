@@ -35,8 +35,8 @@ def get_user_position(user_id):
         # Создаём подзапрос с ранжированием пользователей по калорийности
         stmt = select([
             Nutrition.user_id,
-            func.rank().over(order_by=desc(Nutrition.calories)).label('rank_from_top'),
-            func.rank().over(order_by=Nutrition.calories).label('rank_from_bottom')
+            func.rank().over(order_by=desc(Nutrition.calories)).label('rank_from_bottom'),
+            func.rank().over(order_by=Nutrition.calories).label('rank_from_top')
         ]).where(Nutrition.date == date).subquery()
 
         # Запрашиваем ранжирование для конкретного пользователя
