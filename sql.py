@@ -1,146 +1,102 @@
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, select, func, inspect, DateTime, Date
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
+from sqlalchemy.orm import sessionmaker, declarative_base
 from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
 
-
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
 Session = sessionmaker(bind=engine)
-metadata = MetaData()
+Base = declarative_base()
 
-def create_users_table():
-    insp = inspect(engine)
-    if not insp.has_table("users"):
-        users_table = Table('users', metadata,
-                            Column('user_id', Integer, primary_key=True),
-                            Column('start_date', DateTime),
-                            Column('last_payment_date', DateTime))
-        users_table.create(engine)
-        logger.info(f'function create_users_table started with new table')
-    else:
-        users_table = Table('users', metadata, autoload_with=engine)
-        logger.info(f'function create_users_table started with exist table')
-    return users_table
 
-def get_user(users_table, user_id):
+class User(Base):
+    __tablename__ = 'users'
+    user_id = Column(Integer, primary_key=True)
+    start_date = Column(DateTime)
+    last_payment_date = Column(DateTime)
+
+
+class Nutrition(Base):
+    __tablename__ = 'nutrition'
+    date = Column(Date, primary_key=True)
+    user_id = Column(Integer, primary_key=True)
+    fat = Column(Integer)
+    protein = Column(Integer)
+    carbs = Column(Integer)
+    calories = Column(Integer)
+    text = Column(String)
+
+
+Base.metadata.create_all(engine)
+
+
+def get_user(user_id):
     logger.info(f'function get_user started')
     with Session() as session:
-        query = select().select_from(users_table).where(users_table.c.user_id == user_id)
-        result = session.execute(query).fetchone()
-    return result
+        user = session.query(User).filter(User.user_id == user_id).first()
+    return user
 
-def add_user(users_table, user_id):
+
+def add_user(user_id):
     logger.info(f'function add_user started. Type of user is {type(user_id)}')
     with Session() as session:
         date = datetime.now()
-        session.execute(users_table.insert().values(user_id=user_id, start_date=date, last_payment_date=date))
+        new_user = User(user_id=user_id, start_date=date, last_payment_date=date)
+        session.add(new_user)
         session.commit()
 
-def update_payment_date(users_table, user_id):
+
+def update_payment_date(user_id):
     logger.info(f'function update_payment_date started')
     with Session() as session:
         date = datetime.now()
-        session.execute(users_table.update().where(users_table.c.user_id == user_id).values(last_payment_date=date))
-        session.commit()
-
-
-def create_nutrition_table():
-    insp = inspect(engine)
-    if not insp.has_table("nutrition"):
-        nutrition_table = Table('nutrition', metadata,
-                                Column('date', Date, primary_key=True),
-                                Column('user_id', Integer, primary_key=True),
-                                Column('fat', Integer),
-                                Column('protein', Integer),
-                                Column('carbs', Integer),
-                                Column('calories', Integer),
-                                Column('text', String))
-        nutrition_table.create(engine)
-        logger.info(f'function create_nutrition_table started with new table')
-    else:
-        nutrition_table = Table('nutrition', metadata, autoload_with=engine)
-        logger.info(f'function create_nutrition_table started with exist table')
-    return nutrition_table
-
-
-def add_test_entry(nutrition_table):
-    try:
-        with Session() as session:
-            date = datetime.now().date()
-            session.execute(
-                nutrition_table.insert().values(
-                    date=date,
-                    user_id=1,
-                    fat=10,
-                    protein=20,
-                    carbs=30,
-                    calories=40,
-                    text='test entry')
-            )
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if user:
+            user.last_payment_date = date
             session.commit()
-    except Exception as e:
-        logger.error(f"Error occurred while trying to insert a test entry: {e}")
 
 
-def add_entry(nutrition_table, user_id, json_data):
-    # add_test_entry(nutrition_table)
+def add_entry(user_id, json_data):
     with Session() as session:
         date = datetime.now().date()
         logger.info(f'function add_entry received data {json_data=}')
-        query = select().select_from(nutrition_table).where(nutrition_table.c.date == date, nutrition_table.c.user_id == user_id)
-        result = session.execute(query).fetchone()
+        nutrition = session.query(Nutrition).filter(Nutrition.date == date, Nutrition.user_id == user_id).first()
 
-        if result:
-            # Обновляем существующую запись
+        if nutrition:
             logger.info(f'function add_entry started with exist record')
-            session.execute(
-                nutrition_table.update().where(nutrition_table.c.date == date,
-                                               nutrition_table.c.user_id == user_id).values(
-                    fat=nutrition_table.c.fat + json_data['fat'],
-                    protein=nutrition_table.c.protein + json_data['protein'],
-                    carbs=nutrition_table.c.carbs + json_data['carbs'],
-                    calories=nutrition_table.c.calories + json_data['calories'],
-                    text=nutrition_table.c.text + ', ' + json_data['text'])
-            )
+            nutrition.fat += json_data['fat']
+            nutrition.protein += json_data['protein']
+            nutrition.carbs += json_data['carbs']
+            nutrition.calories += json_data['calories']
+            nutrition.text += ', ' + json_data['text']
         else:
-            # Добавляем новую запись
             logger.info(f'function add_entry started with new record')
-            session.execute(
-                nutrition_table.insert().values(
-                    date=date,
-                    user_id=user_id,
-                    fat=json_data['fat'],
-                    protein=json_data['protein'],
-                    carbs=json_data['carbs'],
-                    calories=json_data['calories'],
-                    text=json_data['text'])
-            )
+            new_nutrition = Nutrition(date=date, user_id=user_id, fat=json_data['fat'],
+                                      protein=json_data['protein'], carbs=json_data['carbs'],
+                                      calories=json_data['calories'], text=json_data['text'])
+            session.add(new_nutrition)
 
         session.commit()
 
         return f"Принял и запомнил. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} ккал"
 
 
-def get_data_from_db(nutrition_table, user_id, date_str):
+def get_data_from_db(user_id, date_str):
     logger.info(f'function get_data_from_db started')
     with Session() as session:
         try:
-            # Парсим дату из строки
             date_obj = datetime.strptime(date_str, "%d.%m.%y").date()
             logger.info(f'function get_data_from_db started with {date_obj=}')
 
-            query = select().select_from(nutrition_table).where(nutrition_table.c.date == date_obj,
-                                                    nutrition_table.c.user_id == user_id)
-            result = session.execute(query).fetchone()
+            nutrition = session.query(Nutrition).filter(Nutrition.date == date_obj,
+                                                        Nutrition.user_id == user_id).first()
 
-            if result:
-                # Возвращаем данные в виде текста
-                return f"Дата: {result['date']}\n" \
-                       f"Жиры: {result['fat']}\n" \
-                       f"Белки: {result['protein']}\n" \
-                       f"Углеводы: {result['carbs']}\n" \
-                       f"Калории: {result['calories']}\n" \
-                       f"({result['text']})"
+            if nutrition:
+                return f"Дата: {nutrition.date}\n" \
+                       f"Жиры: {nutrition.fat}\n" \
+                       f"Белки: {nutrition.protein}\n" \
+                       f"Углеводы: {nutrition.carbs}\n" \
+                       f"Калории: {nutrition.calories}\n" \
+                       f"({nutrition.text})"
             else:
                 return "Нет данных для этой даты."
 

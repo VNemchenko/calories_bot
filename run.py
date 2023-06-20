@@ -9,11 +9,6 @@ from sql import (get_data_from_db, add_entry,
                  get_user, add_user, update_payment_date, create_users_table, create_nutrition_table, datetime)
 
 
-def reply(update: Update, text: str):
-    logger.info(f'function reply started with {text=}')
-    update.message.reply_text(text)
-
-
 def start(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     logger.info(f'function start started with {user_id=}')
@@ -25,10 +20,10 @@ def start(update: Update, context: CallbackContext) -> None:
             logger.info(f'user {user_id=} has 7 days use')
             keyboard = [[InlineKeyboardButton("Donate", callback_data='DONATE')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            reply(update, 'Здорово, вы пользуетесь моей помощью уже неделю! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на оплату сервера')
+            context.bot.send_message(chat_id=update.effective_chat.id, text='Здорово, вы пользуетесь моей помощью уже неделю! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на оплату сервера')
     else:
         add_user(create_users_table(), user_id)
-        reply(update, 'Привет, начнем подсчет калорий! Просто пиши то, что ты поел, чтобы не забыть, а если захочешь узнать итог, отправь дату в формате ДД.ММ.ГГ')
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Привет, начнем подсчет калорий! Просто пиши то, что ты поел, чтобы не забыть, а если захочешь узнать итог, отправь дату в формате ДД.ММ.ГГ')
 
 
 def process_message(update: Update, context: CallbackContext) -> None:
@@ -38,7 +33,7 @@ def process_message(update: Update, context: CallbackContext) -> None:
     if re.search(r'\b\d{2}\.\d{2}\.\d{2}\b', message_text):
         logger.info(f'function process_message started with date founded in  {message_text=}')
         data = get_data_from_db(create_nutrition_table(), user_id, message_text)
-        reply(update, data)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
         json_data = get_nutrition_info(message_text)
         if json_data:
@@ -46,7 +41,7 @@ def process_message(update: Update, context: CallbackContext) -> None:
         else:
             message = f'Извините, не удалось подсчитать калории, попробуйте сформулировать фразу иначе'
 
-        reply(update, message)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
 
 def button(update: Update, context: CallbackContext) -> None:
@@ -59,7 +54,7 @@ def button(update: Update, context: CallbackContext) -> None:
         # after successful payment you should call update_payment_date function to update payment date for user
         if donate_process:
             update_payment_date(create_users_table(), user_id)
-            query.edit_message_text("Спасибо!")
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Спасибо!")
 
 
 def main() -> None:
@@ -77,7 +72,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    # Определение структуры таблицы
-    # users_table = create_users_table()
-    # nutrition_table = create_nutrition_table()
     main()
