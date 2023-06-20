@@ -14,7 +14,6 @@ DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 FORM_URL = 'https://forms.gle/E4eePqeA6XXww3Pr5'
-DONATE_URL = 'https://www.tinkoff.ru/cf/A5Sv53qqs89'
 
 
 FOR_DATE = range(1)

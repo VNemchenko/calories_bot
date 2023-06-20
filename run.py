@@ -4,7 +4,7 @@ import dateparser
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL, DONATE_URL
+from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry,
                  get_user, add_user, update_payment_date, get_user_position)
@@ -15,7 +15,7 @@ def feedback(update: Update, context: CallbackContext) -> None:
 
 
 def donate(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(f'Вы можете поддержать разработчика, пройдя по ссылке: {DONATE_URL}')
+    update.message.reply_text(f'Вы можете поддержать разработчика, пройдя по ссылке:')
 
 
 def champ(update: Update, context: CallbackContext) -> None:
@@ -31,20 +31,24 @@ def instruct(update: Update, context: CallbackContext) -> None:
 def extract_date_from_message(message_text: str):
     date_obj = None
     # проверка на наличие даты в формате dd.mm.yy, dd.mm.yyyy, dd Month yyyy, dd месяц yyyy
+    # а также форматы без года: dd.mm, dd Month
     date_formats = [r'\b\d{1,2}\.\d{1,2}\.\d{2}\b', r'\b\d{1,2}\.\d{1,2}\.\d{4}\b',
-                    r'\b\d{1,2}\s\w+\s\d{4}\b', r'\b\d{1,2}\s\w+\s\d{2}\b']
+                    r'\b\d{1,2}\s\w+\s\d{4}\b', r'\b\d{1,2}\s\w+\s\d{2}\b',
+                    r'\b\d{1,2}\.\d{1,2}\b', r'\b\d{1,2}\s\w+\b']
     for date_format in date_formats:
         search = re.search(date_format, message_text)
         if search:
             date_str = search.group(0)
-            date_obj = dateparser.parse(date_str, languages=['en', 'ru'])
-            if date_obj:
+            datetime_obj = dateparser.parse(date_str, languages=['en', 'ru'])
+            if datetime_obj:
+                date_obj = datetime_obj.date()
                 break
     # проверка на наличие ключевых слов в сообщении
     if not date_obj:
         for word in message_text.split():
             if word.lower() in WORDS_TO_DATES:
-                date_obj = WORDS_TO_DATES[word.lower()]
+                date_obj = WORDS_TO_DATES[word.lower()]()
+                logger.info(f'function extract_date_from_message change {word=} to {date_obj=} with type {type(date_obj)}')
                 break
     return date_obj
 
@@ -55,7 +59,7 @@ def start(update: Update, context: CallbackContext) -> None:
     user = get_user(user_id)
 
     if user:
-        last_payment_date = user['last_payment_date']
+        last_payment_date = user.last_payment_date
         if (datetime.now() - last_payment_date).days > 7:
             logger.info(f'user {user_id=} has 7 days use')
             keyboard = [[InlineKeyboardButton("Donate", callback_data='DONATE')]]

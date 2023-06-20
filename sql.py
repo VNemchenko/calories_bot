@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, desc, func, select
-from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger, datetime
 
@@ -31,7 +30,7 @@ Base.metadata.create_all(engine)
 
 def get_user_position(user_id):
     logger.info(f'function get_user_position started')
-    date = datetime.now()
+    date = datetime.now().date()
     with Session() as session:
         # Создаём подзапрос с ранжированием пользователей по калорийности
         stmt = select([
@@ -81,7 +80,6 @@ def update_payment_date(user_id):
 
 def add_entry(user_id, json_data, date):
     with Session() as session:
-        date = datetime.now().date()
         logger.info(f'function add_entry received data {json_data=}')
         nutrition = session.query(Nutrition).filter(Nutrition.date == date, Nutrition.user_id == user_id).first()
 
