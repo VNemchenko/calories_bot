@@ -1,13 +1,52 @@
 import re
-from datetime import timedelta
+import dateparser
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger
+from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL, DONATE_URL
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry,
-                 get_user, add_user, update_payment_date, datetime)
+                 get_user, add_user, update_payment_date, get_user_position)
+
+
+def feedback(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(f'Пожалуйста, оставьте свои отзывы и пожелания здесь: {FORM_URL}')
+
+
+def donate(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(f'Вы можете поддержать разработчика, пройдя по ссылке: {DONATE_URL}')
+
+
+def champ(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id
+    get_user_position(user_id)
+    update.message.reply_text(get_user_position(user_id))
+
+
+def instruct(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(f'Вы можете написать простым текстом то, что вы только что поели, и бот сохранит эти данные в базу, обновляя их с каждым сообщением. Вы можете запросить итоговые данные, введя соответствующую дату. Так же вы можете добавить пропущенный прием пищи, воспользовавшись командой в меню или введя /for_date. Будем рады отзывам и предложениям!')
+
+
+def extract_date_from_message(message_text: str):
+    date_obj = None
+    # проверка на наличие даты в формате dd.mm.yy, dd.mm.yyyy, dd Month yyyy, dd месяц yyyy
+    date_formats = [r'\b\d{1,2}\.\d{1,2}\.\d{2}\b', r'\b\d{1,2}\.\d{1,2}\.\d{4}\b',
+                    r'\b\d{1,2}\s\w+\s\d{4}\b', r'\b\d{1,2}\s\w+\s\d{2}\b']
+    for date_format in date_formats:
+        search = re.search(date_format, message_text)
+        if search:
+            date_str = search.group(0)
+            date_obj = dateparser.parse(date_str, languages=['en', 'ru'])
+            if date_obj:
+                break
+    # проверка на наличие ключевых слов в сообщении
+    if not date_obj:
+        for word in message_text.split():
+            if word.lower() in WORDS_TO_DATES:
+                date_obj = WORDS_TO_DATES[word.lower()]
+                break
+    return date_obj
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -27,44 +66,50 @@ def start(update: Update, context: CallbackContext) -> None:
         context.bot.send_message(chat_id=update.effective_chat.id, text='Привет! Давайте начнём отслеживание калорий. Просто сообщайте мне, что вы съели, чтобы не забывать. Если захотите увидеть общий подсчёт, отправьте дату в формате ДД.ММ.ГГ.')
 
 
+def start_for_date(update: Update, context: CallbackContext) -> int:
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Отправьте сообщение в виде {день} {продукты}")
+    return FOR_DATE
+
+
+def process_for_date(update: Update, context: CallbackContext) -> int:
+    user_id = update.effective_user.id
+    message_text = update.message.text
+    date_obj = extract_date_from_message(message_text)
+    try:
+        if date_obj:
+            json_data = get_nutrition_info(message_text)
+            message = add_entry(user_id, json_data, date_obj)
+            context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+        else:
+            raise ValueError(
+                "Дата не распознана. Пожалуйста, используйте формат ДД.ММ.ГГ или ключевые слова: сегодня, вчера, позавчера.")
+        return ConversationHandler.END
+    except Exception as e:
+        logger.info(f'error in process_for_date: {e}')
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Не получилось внести данные. Попробуйте написать по-другому или введите команду /cancel')
+        return FOR_DATE
+
+
+def cancel(update: Update, context: CallbackContext) -> int:
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Выход из режима запроса даты.")
+    return ConversationHandler.END
+
+
 def process_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     message_text = update.message.text
-
-    # словарь для получения даты по ключевым словам
-    words_to_dates = {
-        "сегодня": lambda: datetime.now().date(),
-        "today": lambda: datetime.now().date(),
-        "вчера": lambda: (datetime.now() - timedelta(days=1)).date(),
-        "yesterday": lambda: (datetime.now() - timedelta(days=1)).date(),
-        "позавчера": lambda: (datetime.now() - timedelta(days=2)).date()
-    }
-
-    date_obj = None
-
-    # проверка на наличие даты в формате dd.mm.yy
-    if re.search(r'\b\d{2}\.\d{2}\.\d{2}\b', message_text):
-        logger.info(f'function process_message started with date founded in  {message_text=}')
-        date_obj = datetime.strptime(message_text, "%d.%m.%y").date()
-
-    # проверка на наличие ключевых слов в сообщении
-    else:
-        for word in message_text.split():
-            if word.lower() in words_to_dates:
-                date_obj = words_to_dates[word.lower()]()
-                break
-
+    date_obj = extract_date_from_message(message_text)
     if date_obj:
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
         try:
+            date = datetime.now().date()
             json_data = get_nutrition_info(message_text)
-            message = add_entry(user_id, json_data)
+            message = add_entry(user_id, json_data, date)
         except Exception as e:
             logger.error(f'Error from chatgpt_utils {e}')
             message = f'К сожалению, не получилось рассчитать калорийность. Попробуйте описать продукты иначе, или, если это напиток, укажите его калорийность, и я подсчитаю содержание углеводов.'
-
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
 
@@ -87,6 +132,21 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("feedback", feedback))
+    dispatcher.add_handler(CommandHandler("donate", donate))
+    dispatcher.add_handler(CommandHandler("instruct", instruct))
+    dispatcher.add_handler(CommandHandler("champ", champ))
+
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('for_date', start_for_date)],
+        states={
+            FOR_DATE: [MessageHandler(Filters.text & ~Filters.command, process_for_date)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    dispatcher.add_handler(conv_handler)
+
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, process_message))
     dispatcher.add_handler(CallbackQueryHandler(button))
 

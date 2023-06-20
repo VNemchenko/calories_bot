@@ -3,3 +3,4 @@ sqlalchemy==1.4.22
 python-telegram-bot==13.7
 psycopg2-binary
 loguru
+dateparser

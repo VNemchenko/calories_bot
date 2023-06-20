@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, desc, func, select
+from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from datetime import datetime
-from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
+from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger, datetime
 
 engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
 Session = sessionmaker(bind=engine)
@@ -27,6 +27,30 @@ class Nutrition(Base):
 
 
 Base.metadata.create_all(engine)
+
+
+def get_user_position(user_id):
+    logger.info(f'function get_user_position started')
+    date = datetime.now()
+    with Session() as session:
+        # Создаём подзапрос с ранжированием пользователей по калорийности
+        stmt = select([
+            Nutrition.user_id,
+            func.rank().over(order_by=desc(Nutrition.calories)).label('rank_from_top'),
+            func.rank().over(order_by=Nutrition.calories).label('rank_from_bottom')
+        ]).where(Nutrition.date == date).subquery()
+
+        # Запрашиваем ранжирование для конкретного пользователя
+        user_rank = session.query(stmt).filter(stmt.c.user_id == user_id).first()
+
+        # Получаем общее количество пользователей за день
+        total_users = session.query(Nutrition).filter(Nutrition.date == date).count()
+
+        if user_rank is None:
+            return f"Пользователь с вашим ID не найден в таблице питания за сегодня."
+        else:
+            return f"Сегодня вы на {user_rank.rank_from_top} месте по калориям, " \
+                   f"и на {user_rank.rank_from_bottom} месте по дефициту. Всего участвуют {total_users} пользователей."
 
 
 def get_user(user_id):
@@ -55,7 +79,7 @@ def update_payment_date(user_id):
             session.commit()
 
 
-def add_entry(user_id, json_data):
+def add_entry(user_id, json_data, date):
     with Session() as session:
         date = datetime.now().date()
         logger.info(f'function add_entry received data {json_data=}')
