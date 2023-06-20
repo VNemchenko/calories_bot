@@ -3,7 +3,7 @@ from datetime import datetime
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger
 
 
-engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}')
+engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
 metadata = MetaData()
 
 
@@ -29,7 +29,7 @@ def get_user(users_table, user_id):
         return result
 
 def add_user(users_table, user_id):
-    logger.info(f'function add_user started')
+    logger.info(f'function add_user started. Type of user is {type(user_id)}')
     with engine.connect() as connection:
         date = datetime.now()  # теперь date - это объект datetime, а не строка
         connection.execute(users_table.insert().values(user_id=user_id, start_date=date, last_payment_date=date))
@@ -61,18 +61,21 @@ def create_nutrition_table():
 
 
 def add_test_entry(nutrition_table):
-    with engine.connect() as connection:
-        date = datetime.now().date()  # используем только дату, без времени
-        connection.execute(
-            nutrition_table.insert().values(
-                date=date,
-                user_id=1,
-                fat=10,
-                protein=20,
-                carbs=30,
-                calories=40,
-                text='test entry')
-        )
+    try:
+        with engine.connect() as connection:
+            date = datetime.now().date()  # используем только дату, без времени
+            connection.execute(
+                nutrition_table.insert().values(
+                    date=date,
+                    user_id=1,
+                    fat=10,
+                    protein=20,
+                    carbs=30,
+                    calories=40,
+                    text='test entry')
+            )
+    except Exception as e:
+        logger.error(f"Error occurred while trying to insert a test entry: {e}")
 
 
 def add_entry(nutrition_table, user_id, json_data):

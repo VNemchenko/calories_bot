@@ -2,7 +2,7 @@ import os
 from loguru import logger
 import sys
 
-logger.add(sys.stdout, format="{time} {level} {message}", level="DEBUG")
+logger.add(sys.stdout, format="", level="INFO")
 
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
