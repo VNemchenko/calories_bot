@@ -4,7 +4,7 @@ import dateparser
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT
+from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT, SECRET_WORD
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry, reset_block_and_counter, is_user_vip, make_user_vip,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
@@ -28,11 +28,21 @@ def instruct(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(f'Вы можете написать простым текстом то, что вы только что поели, и бот сохранит эти данные в базу, обновляя их с каждым сообщением. Вы можете запросить итоговые данные, введя соответствующую дату. Так же вы можете добавить пропущенный прием пищи, воспользовавшись командой в меню или введя /for_date. Будем рады отзывам и предложениям!')
 
 
-def iddqd(update: Update, context: CallbackContext) -> None:
-    user_id = update.effective_user.id
-    logger.info(f'function iddqd started with {user_id=}')
-    make_user_vip(user_id)
-    context.bot.send_message(chat_id=update.effective_chat.id, text='ГОТОВО, хе-хе-хе=))')
+def start_for_vip(update: Update, context: CallbackContext) -> int:
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Скажите волшебное слово")
+    return FOR_DATE
+
+
+def iddqd(update: Update, context: CallbackContext) -> int:
+    message_text = update.message.text
+    if message_text == SECRET_WORD:
+        user_id = update.effective_user.id
+        logger.info(f'function iddqd started with {user_id=}')
+        make_user_vip(user_id)
+        context.bot.send_message(chat_id=update.effective_chat.id, text='ГОТОВО, хе-хе-хе=))')
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Другое слово')
+    return ConversationHandler.END
 
 
 def extract_date_from_message(message_text: str):
@@ -97,7 +107,7 @@ def process_for_date(update: Update, context: CallbackContext) -> int:
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Выход из режима запроса даты.")
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Выход из команды.")
     return ConversationHandler.END
 
 
@@ -159,8 +169,16 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
+    vip_handler = ConversationHandler(
+        entry_points=[CommandHandler('become_vip', start_for_vip)],
+        states={
+            FOR_DATE: [MessageHandler(Filters.text & ~Filters.command, iddqd)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
 
     dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(vip_handler)
 
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, process_message))
     dispatcher.add_handler(CallbackQueryHandler(button))
