@@ -5,8 +5,8 @@ from config import OPENAI_API_KEY, logger
 from decorators import retry
 
 openai.api_key = OPENAI_API_KEY
-model_60 = 'gpt-3.5-turbo-0613'
-model_3 =  'gpt-3.5-turbo'
+MODEL_60 = 'gpt-3.5-turbo-0613'
+MODEL_3 =  'gpt-3.5-turbo'
 
 
 def extract_json(input_string):
@@ -26,7 +26,7 @@ def extract_json(input_string):
 @retry((ValueError, json.JSONDecodeError), tries=3, delay=2, backoff=2)
 def get_nutrition_info(prompt):
     response = openai.ChatCompletion.create(
-        model=model_60,
+        model=MODEL_3,
         messages=[
             {"role": "system", "content": '''Прочитай список продуктов ниже и посчитай состав белков, жиров и углеводов. ПОсчитай точно насколько это возможно, при необходимости используй средние размеры продуктов или напитков, игнорируй тот факт что данные могут различаться.'''},
             {"role": "system", "content": '''Напиши мне ответ джейсоном вида {'fat': 100, 'protein': 100, 'carbs': 100, 'calories': 1000, 'text': 'тут текст запроса'}, больше никакой другой информации, так как я буду брать твой ответ напрямую в базу данных.'''},

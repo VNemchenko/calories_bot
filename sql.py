@@ -46,7 +46,7 @@ def get_user_position(user_id):
         total_users = session.query(Nutrition).filter(Nutrition.date == date).count()
 
         if user_rank is None:
-            return f"Пользователь с вашим ID не найден в таблице питания за сегодня."
+            return f"Вы еще не вносили записи сегодня."
         else:
             return f"Сегодня вы на {user_rank.rank_from_top} месте по калориям, " \
                    f"и на {user_rank.rank_from_bottom} месте по дефициту. Всего участвуют {total_users} пользователей."
