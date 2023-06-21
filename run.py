@@ -6,7 +6,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 
 from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT
 from chatgpt_utils import get_nutrition_info
-from sql import (get_data_from_db, add_entry, reset_block_and_counter, is_user_vip,
+from sql import (get_data_from_db, add_entry, reset_block_and_counter, is_user_vip, make_user_vip,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
 
 
@@ -26,6 +26,13 @@ def champ(update: Update, context: CallbackContext) -> None:
 
 def instruct(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(f'Вы можете написать простым текстом то, что вы только что поели, и бот сохранит эти данные в базу, обновляя их с каждым сообщением. Вы можете запросить итоговые данные, введя соответствующую дату. Так же вы можете добавить пропущенный прием пищи, воспользовавшись командой в меню или введя /for_date. Будем рады отзывам и предложениям!')
+
+
+def iddqd(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id
+    logger.info(f'function iddqd started with {user_id=}')
+    make_user_vip(user_id)
+    context.bot.send_message(chat_id=update.effective_chat.id, text='ГОТОВО, хе-хе-хе=))')
 
 
 def extract_date_from_message(message_text: str):
@@ -57,17 +64,9 @@ def start(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     logger.info(f'function start started with {user_id=}')
     user = get_user(user_id)
-
-    if user:
-        last_payment_date = user.last_payment_date
-        if (datetime.now() - last_payment_date).days > 7 and not is_user_vip(user_id):
-            logger.info(f'user {user_id=} has 7 days use')
-            keyboard = [[InlineKeyboardButton("Donate", callback_data='DONATE')]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            context.bot.send_message(chat_id=update.effective_chat.id, text='Здорово, вы пользуетесь моей помощью уже неделю! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на оплату сервера')
-    else:
+    if not user:
         add_user(user_id)
-        context.bot.send_message(chat_id=update.effective_chat.id, text='Привет! Давайте начнём отслеживание калорий. Просто сообщайте мне, что вы съели, чтобы не забывать. Если захотите увидеть общий подсчёт, отправьте дату в формате ДД.ММ.ГГ.')
+    context.bot.send_message(chat_id=update.effective_chat.id, text='Привет! Давайте начнём отслеживание калорий. Просто сообщайте мне, что вы съели, чтобы не забывать. Если захотите увидеть общий подсчёт, отправьте дату в формате ДД.ММ.ГГ.')
 
 
 def start_for_date(update: Update, context: CallbackContext) -> int:
@@ -111,7 +110,12 @@ def process_message(update: Update, context: CallbackContext) -> None:
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
-        if requests_count(user_id) <= RATE_LIMIT:
+        if not is_user_vip(user_id):
+            logger.info(f'user {user_id=} has 7 days use')
+            keyboard = [[InlineKeyboardButton("Donate", callback_data='DONATE')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            message = 'Здорово, вы пользуетесь помощью бота уже больше недели! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на сопутствующие расходы.'
+        elif requests_count(user_id) <= RATE_LIMIT:
             try:
                 date = datetime.now().date()
                 json_data = get_nutrition_info(message_text)

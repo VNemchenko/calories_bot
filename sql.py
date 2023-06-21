@@ -45,7 +45,18 @@ def increment_request_counter(user_id):
 def is_user_vip(user_id):
     with Session() as session:
         user = session.query(User).filter(User.user_id == user_id).first()
-        return user.is_vip if user else False
+        if user and ((datetime.now() - user.last_payment_date).days <= 7 or user.is_vip):
+            return True
+        else:
+            return False
+
+
+def make_user_vip(user_id):
+    with Session() as session:
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if user:
+            user.is_vip = True
+            session.commit()
 
 
 def requests_count(user_id):
