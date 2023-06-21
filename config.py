@@ -21,7 +21,7 @@ FORM_URL = 'https://forms.gle/E4eePqeA6XXww3Pr5'
 
 
 FOR_DATE = range(1)
-RATE_LIMIT = os.getenv('RATE_LIMIT')
+RATE_LIMIT = int(os.getenv('RATE_LIMIT'))
 SECRET_WORD = os.getenv('SECRET_WORD')
 
 WORDS_TO_DATES = {
