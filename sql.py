@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, desc, func, select
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, desc, func, select, Boolean
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger, datetime
 
@@ -6,13 +6,13 @@ engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATAB
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-
 class User(Base):
     __tablename__ = 'users'
     user_id = Column(Integer, primary_key=True)
     start_date = Column(DateTime)
     last_payment_date = Column(DateTime)
-
+    request_count = Column(Integer, default=0)
+    is_vip = Column(Boolean, default=False)
 
 class Nutrition(Base):
     __tablename__ = 'nutrition'
@@ -24,8 +24,34 @@ class Nutrition(Base):
     calories = Column(Integer)
     text = Column(String)
 
-
 Base.metadata.create_all(engine)
+
+def reset_block_and_counter():
+    with Session() as session:
+        users = session.query(User).all()
+        for user in users:
+            user.request_count = 0
+        session.commit()
+
+
+def increment_request_counter(user_id):
+    with Session() as session:
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if user:
+            user.request_count += 1
+            session.commit()
+
+
+def is_user_vip(user_id):
+    with Session() as session:
+        user = session.query(User).filter(User.user_id == user_id).first()
+        return user.is_vip if user else False
+
+
+def requests_count(user_id):
+    with Session() as session:
+        user = session.query(User).filter(User.user_id == user_id).first()
+        return user.request_count if user else 0
 
 
 def get_user_position(user_id):
@@ -98,8 +124,9 @@ def add_entry(user_id, json_data, date):
             session.add(new_nutrition)
 
         session.commit()
+    increment_request_counter(user_id)
 
-        return f"Записано. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} Ккал."
+    return f"Записано. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} Ккал."
 
 
 def get_data_from_db(user_id, date):

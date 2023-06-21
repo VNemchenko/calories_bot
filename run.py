@@ -4,10 +4,10 @@ import dateparser
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL
+from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT
 from chatgpt_utils import get_nutrition_info
-from sql import (get_data_from_db, add_entry,
-                 get_user, add_user, update_payment_date, get_user_position)
+from sql import (get_data_from_db, add_entry, reset_block_and_counter, is_user_vip,
+                 get_user, add_user, update_payment_date, get_user_position, requests_count)
 
 
 def feedback(update: Update, context: CallbackContext) -> None:
@@ -60,7 +60,7 @@ def start(update: Update, context: CallbackContext) -> None:
 
     if user:
         last_payment_date = user.last_payment_date
-        if (datetime.now() - last_payment_date).days > 7:
+        if (datetime.now() - last_payment_date).days > 7 and not is_user_vip(user_id):
             logger.info(f'user {user_id=} has 7 days use')
             keyboard = [[InlineKeyboardButton("Donate", callback_data='DONATE')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -79,14 +79,17 @@ def process_for_date(update: Update, context: CallbackContext) -> int:
     user_id = update.effective_user.id
     message_text = update.message.text
     date_obj = extract_date_from_message(message_text)
+    logger.info(f'processing message: {message_text} from user {user_id} with {date_obj=}')
     try:
         if date_obj:
-            json_data = get_nutrition_info(message_text)
-            message = add_entry(user_id, json_data, date_obj)
+            if requests_count(user_id) <= RATE_LIMIT:
+                json_data = get_nutrition_info(message_text)
+                message = add_entry(user_id, json_data, date_obj)
+            else:
+                message = f'Извините, вы превысили лимит запросов на сегодня'
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
         else:
-            raise ValueError(
-                "Дата не распознана. Пожалуйста, используйте формат ДД.ММ.ГГ или ключевые слова: сегодня, вчера, позавчера.")
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Дата не распознана. Пожалуйста, используйте формат ДД.ММ.ГГ или ключевые слова: сегодня, вчера, позавчера.")
         return ConversationHandler.END
     except Exception as e:
         logger.info(f'error in process_for_date: {e}')
@@ -103,17 +106,21 @@ def process_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     message_text = update.message.text
     date_obj = extract_date_from_message(message_text)
+    logger.info(f'processing message: {message_text} from user {user_id} with {date_obj=}')
     if date_obj:
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     else:
-        try:
-            date = datetime.now().date()
-            json_data = get_nutrition_info(message_text)
-            message = add_entry(user_id, json_data, date)
-        except Exception as e:
-            logger.error(f'Error from chatgpt_utils {e}')
-            message = f'К сожалению, не получилось рассчитать калорийность. Попробуйте описать продукты иначе, или, если это напиток, укажите его калорийность, и я подсчитаю содержание углеводов.'
+        if requests_count(user_id) <= RATE_LIMIT:
+            try:
+                date = datetime.now().date()
+                json_data = get_nutrition_info(message_text)
+                message = add_entry(user_id, json_data, date)
+            except Exception as e:
+                logger.error(f'Error from chatgpt_utils {e}')
+                message = f'К сожалению, не получилось рассчитать калорийность. Попробуйте описать продукты иначе, или, если это напиток, укажите его калорийность, и я подсчитаю содержание углеводов.'
+        else:
+            message = f'Извините, вы превысили лимит запросов на сегодня'
         context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
 
@@ -160,4 +167,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    reset_block_and_counter()
     main()
