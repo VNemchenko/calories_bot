@@ -3,7 +3,11 @@ from loguru import logger
 import sys
 from datetime import datetime, timedelta
 
-logger.add(sys.stdout, format="", level="INFO")
+
+if os.getenv('LOG_ENV') == "stage":
+    logger.add(sys.stdout, format="", level="INFO")
+else:
+    logger.add(f"/app/logs/calories_bot.log", rotation="3 day", format="{time} {level} {message}", level="INFO")
 
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')

@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, d
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger, datetime
 
-engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=True)
+engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{HOST}:5432/{DATABASE}', echo=False)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
