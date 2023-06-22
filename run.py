@@ -2,9 +2,9 @@ import re
 import dateparser
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler, PreCheckoutQueryHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT, SECRET_WORD, PROVIDER_TOKEN
+from config import TELEGRAM_BOT_TOKEN, logger, FOR_DATE, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT, SECRET_WORD, PROVIDER_TOKEN, DATE_FORMATS, INSTRUCT,START_MESSAGE
 from chatgpt_utils import get_nutrition_info
 from sql import (get_data_from_db, add_entry, reset_block_and_counter, is_user_vip, make_user_vip,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
@@ -19,35 +19,31 @@ def donate(update: Update, context: CallbackContext) -> None:
     chat_id = update.effective_chat.id
     title = "Пожертвование"
     description = "Поддержите разработчика"
-    payload = "Custom-Payload"  # this is optional
+    payload = "Calories-Payload"  # this is optional
     provider_token = PROVIDER_TOKEN
     currency = "RUB"
-    # price1 = LabeledPrice("Donate1", 10000)
-    # price2 = LabeledPrice("Donate2", 20000)
-    # price3 = LabeledPrice("Donate3", 50000)
-    prices = [LabeledPrice("Donate1", 10000), LabeledPrice("Donate2", 20000), LabeledPrice("Donate3", 50000)]
-    logger.info(f'DEBUG {prices=}')
+    prices = [LabeledPrice("На оплату сервисов и развитие функционала", 20000)]
     context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices)
+    # context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, start_parameter=None, photo_url=None, photo_size=None, photo_width=None, photo_height=None, need_name=None, need_phone_number=None, need_email=None, need_shipping_address=None, is_flexible=None, disable_notification=None, reply_to_message_id=None, reply_markup=None, provider_data=None, send_phone_number_to_provider=None, send_email_to_provider=None, timeout=None, api_kwargs=None, allow_sending_without_reply=None, max_tip_amount=None, suggested_tip_amounts=None)
 
-    # Ожидание подтверждения платежа
-    pre_checkout_query = update.pre_checkout_query
-    if pre_checkout_query.invoice_payload != payload:
-        context.bot.answer_pre_checkout_query(pre_checkout_query.id, ok=False,
+
+def precheckout_callback(update: Update, context: CallbackContext) -> None:
+    query = update.pre_checkout_query
+    if query.invoice_payload != 'Calories-Payload':
+        logger.info(f"precheckout_callback fail {query.invoice_payload=}")
+        context.bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=False,
                                               error_message="Что-то пошло не так...")
     else:
-        context.bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+        context.bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=True)
 
-    # Обработка успешного платежа
+
+def successful_payment_callback(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id
     successful_payment = update.message.successful_payment
-    if successful_payment:
-        # Сохранение номера транзакции
-        transaction_id = successful_payment.provider_payment_charge_id
-        logger.info(f"Payment successful! Transaction ID: {transaction_id} from {user_id=}")
-        update_payment_date(user_id)
-        # Отправка сообщения об успешном платеже и выполнение других действий
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Спасибо за поддержку!")
-        # Здесь можно добавить дополнительные действия, например, подключение услуги или отправка контента
-
+    transaction_id = successful_payment.provider_payment_charge_id
+    logger.info(f"Payment successful! Transaction ID: {transaction_id} from {user_id=}")
+    update_payment_date(user_id)
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Спасибо за поддержку!")
 
 
 def champ(update: Update, context: CallbackContext) -> None:
@@ -57,7 +53,7 @@ def champ(update: Update, context: CallbackContext) -> None:
 
 
 def instruct(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(f'Вы можете написать простым текстом то, что вы только что поели, и бот сохранит эти данные в базу, обновляя их с каждым сообщением. Вы можете запросить итоговые данные, введя соответствующую дату. Так же вы можете добавить пропущенный прием пищи, воспользовавшись командой в меню или введя /for_date. Будем рады отзывам и предложениям!')
+    update.message.reply_text(INSTRUCT)
 
 
 def start_for_vip(update: Update, context: CallbackContext) -> int:
@@ -79,12 +75,7 @@ def iddqd(update: Update, context: CallbackContext) -> int:
 
 def extract_date_from_message(message_text: str):
     date_obj = None
-    # проверка на наличие даты в формате dd.mm.yy, dd.mm.yyyy, dd Month yyyy, dd месяц yyyy
-    # а также форматы без года: dd.mm, dd Month
-    date_formats = [r'\b\d{1,2}\.\d{1,2}\.\d{2}\b', r'\b\d{1,2}\.\d{1,2}\.\d{4}\b',
-                    r'\b\d{1,2}\s\w+\s\d{4}\b', r'\b\d{1,2}\s\w+\s\d{2}\b',
-                    r'\b\d{1,2}\.\d{1,2}\b', r'\b\d{1,2}\s\w+\b']
-    for date_format in date_formats:
+    for date_format in DATE_FORMATS:
         search = re.search(date_format, message_text)
         if search:
             date_str = search.group(0)
@@ -92,7 +83,6 @@ def extract_date_from_message(message_text: str):
             if datetime_obj:
                 date_obj = datetime_obj.date()
                 break
-    # проверка на наличие ключевых слов в сообщении
     if not date_obj:
         for word in message_text.split():
             if word.lower() in WORDS_TO_DATES:
@@ -108,7 +98,7 @@ def start(update: Update, context: CallbackContext) -> None:
     user = get_user(user_id)
     if not user:
         add_user(user_id)
-    context.bot.send_message(chat_id=update.effective_chat.id, text='Привет! Давайте начнём отслеживание калорий. Просто сообщайте мне, что вы съели, чтобы не забывать. Если захотите увидеть общий подсчёт, отправьте дату в формате ДД.ММ.ГГ.')
+    context.bot.send_message(chat_id=update.effective_chat.id, text=START_MESSAGE)
 
 
 def start_for_date(update: Update, context: CallbackContext) -> int:
@@ -215,6 +205,8 @@ def main() -> None:
 
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, process_message))
     dispatcher.add_handler(CallbackQueryHandler(button))
+    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+    dispatcher.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
 
     updater.start_polling()
 
