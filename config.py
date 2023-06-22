@@ -9,6 +9,8 @@ if os.getenv('LOG_ENV') == "stage":
 else:
     logger.add(f"/app/logs/calories_bot.log", rotation="3 day", format="{time} {level} {message}", level="INFO")
 
+logger.add("/app/logs/special_calories.log", format="{time} {level} {message}", level="INFO", filter=lambda record: record["extra"].get("special"))
+
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')

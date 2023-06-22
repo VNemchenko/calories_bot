@@ -15,15 +15,16 @@ def feedback(update: Update, context: CallbackContext) -> None:
 
 
 def donate(update: Update, context: CallbackContext) -> None:
-    user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     title = "Пожертвование"
     description = "Поддержите разработчика"
     payload = "Calories-Payload"  # this is optional
     provider_token = PROVIDER_TOKEN
     currency = "RUB"
-    prices = [LabeledPrice("На оплату сервисов и развитие функционала", 20000)]
-    context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices)
+    prices = [LabeledPrice("На оплату сервисов и развитие функционала", 9900)]
+    suggested_tips = [9900, 19900, 39900]
+    max_tip = max(suggested_tips)
+    context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips)
     # context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, start_parameter=None, photo_url=None, photo_size=None, photo_width=None, photo_height=None, need_name=None, need_phone_number=None, need_email=None, need_shipping_address=None, is_flexible=None, disable_notification=None, reply_to_message_id=None, reply_markup=None, provider_data=None, send_phone_number_to_provider=None, send_email_to_provider=None, timeout=None, api_kwargs=None, allow_sending_without_reply=None, max_tip_amount=None, suggested_tip_amounts=None)
 
 
@@ -41,7 +42,10 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
     user_id = update.effective_user.id
     successful_payment = update.message.successful_payment
     transaction_id = successful_payment.provider_payment_charge_id
+    total_amount = successful_payment.total_amount/100
+    currency = successful_payment.currency
     logger.info(f"Payment successful! Transaction ID: {transaction_id} from {user_id=}")
+    logger.info(f"User {user_id} is donate {total_amount} {currency}", extra={"special": True})
     update_payment_date(user_id)
     context.bot.send_message(chat_id=update.effective_chat.id, text="Спасибо за поддержку!")
 
@@ -67,6 +71,7 @@ def iddqd(update: Update, context: CallbackContext) -> int:
         user_id = update.effective_user.id
         logger.info(f'function iddqd started with {user_id=}')
         make_user_vip(user_id)
+        logger.info(f"User {user_id} is became VIP", extra={"special": True})
         context.bot.send_message(chat_id=update.effective_chat.id, text='ГОТОВО, хе-хе-хе=))')
     else:
         context.bot.send_message(chat_id=update.effective_chat.id, text='Другое слово')
@@ -98,6 +103,7 @@ def start(update: Update, context: CallbackContext) -> None:
     user = get_user(user_id)
     if not user:
         add_user(user_id)
+        logger.info(f"User {user_id} is joined", extra={"special": True})
     context.bot.send_message(chat_id=update.effective_chat.id, text=START_MESSAGE)
 
 
@@ -118,6 +124,7 @@ def process_for_date(update: Update, context: CallbackContext) -> int:
                 message = add_entry(user_id, json_data, date_obj)
             else:
                 message = f'Извините, вы превысили лимит запросов на сегодня'
+                logger.info(f"User {user_id} is reach daily limit", extra={"special": True})
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
         else:
             context.bot.send_message(chat_id=update.effective_chat.id, text="Дата не распознана. Пожалуйста, используйте формат ДД.ММ.ГГ или ключевые слова: сегодня, вчера, позавчера.")
@@ -145,6 +152,7 @@ def process_message(update: Update, context: CallbackContext) -> None:
         if False and not is_user_vip(user_id):
             logger.info(f'user {user_id=} has 7 days use')
             message = 'Здорово, вы пользуетесь помощью бота уже больше недели! Как вам? Если вам нравится этот сервис, задонатьте пожалуйста на сопутствующие расходы.'
+            logger.info(f"User {user_id} is blocked", extra={"special": True})
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
             donate(update, context)
         elif requests_count(user_id) <= RATE_LIMIT:
@@ -158,20 +166,8 @@ def process_message(update: Update, context: CallbackContext) -> None:
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
         else:
             message = f'Извините, вы превысили лимит запросов на сегодня'
+            logger.info(f"User {user_id} is reach daily limit", extra={"special": True})
             context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-
-
-def button(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    user_id = query.from_user.id
-
-    if query.data == 'DONATE':
-        # here you should redirect user to payment page
-        donate_process = True
-        # after successful payment you should call update_payment_date function to update payment date for user
-        if donate_process:
-            update_payment_date(user_id)
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Спасибо!")
 
 
 def main() -> None:
@@ -204,7 +200,6 @@ def main() -> None:
     dispatcher.add_handler(vip_handler)
 
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, process_message))
-    dispatcher.add_handler(CallbackQueryHandler(button))
     dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     dispatcher.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
 
