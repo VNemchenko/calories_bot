@@ -12,6 +12,7 @@ else:
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN')
 HOST = os.getenv('HOST')
 DATABASE = os.getenv('DATABASE')
 DB_USER = os.getenv('DB_USER')
@@ -23,6 +24,7 @@ FORM_URL = 'https://forms.gle/E4eePqeA6XXww3Pr5'
 FOR_DATE = range(1)
 RATE_LIMIT = int(os.getenv('RATE_LIMIT'))
 SECRET_WORD = os.getenv('SECRET_WORD')
+
 
 WORDS_TO_DATES = {
         "сегодня": lambda: datetime.now().date(),
