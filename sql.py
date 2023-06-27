@@ -9,6 +9,7 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = 'users'
     user_id = Column(Integer, primary_key=True)
+    chat_id = Column(Integer)  # новое поле
     start_date = Column(DateTime)
     last_payment_date = Column(DateTime)
     request_count = Column(Integer, default=0)
@@ -89,20 +90,31 @@ def get_user_position(user_id):
                    f"и на {user_rank.rank_from_bottom} месте по дефициту. Всего участвуют {total_users} пользователей."
 
 
-def get_user(user_id):
+def get_user(user_id, chat_id):
     logger.info(f'function get_user started')
     with Session() as session:
         user = session.query(User).filter(User.user_id == user_id).first()
+        if user and user.chat_id != chat_id:  # проверяем, отличается ли chat_id
+            user.chat_id = chat_id  # если отличается, обновляем его
+            session.commit()  # сохраняем изменения
     return user
 
 
-def add_user(user_id):
+def add_user(user_id, chat_id):  # добавляем chat_id как аргумент
     logger.info(f'function add_user started. Type of user is {type(user_id)}')
     with Session() as session:
         date = datetime.now()
-        new_user = User(user_id=user_id, start_date=date, last_payment_date=date)
+        new_user = User(user_id=user_id, chat_id=chat_id, start_date=date, last_payment_date=date)  # передаем chat_id в User
         session.add(new_user)
         session.commit()
+
+
+def get_chat_ids() -> list:
+    with Session() as session:
+        chat_ids = session.query(User.chat_id).distinct()  # получаем все уникальные chat_id
+        # преобразуем результат в список для удобства
+        chat_ids = [chat_id[0] for chat_id in chat_ids]
+    return chat_ids
 
 
 def update_payment_date(user_id):
@@ -137,27 +149,23 @@ def add_entry(user_id, json_data, date):
         session.commit()
     increment_request_counter(user_id)
 
-    return f"Записано. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} Ккал."
+    return f"Записано на {date}. Это примерно {json_data['fat']} гр. жиров, {json_data['protein']} гр. белков и {json_data['carbs']} гр. углеводов, всего {json_data['calories']} Ккал."
 
 
 def get_data_from_db(user_id, date):
     logger.info(f'function get_data_from_db started')
     with Session() as session:
-        try:
-            logger.info(f'function get_data_from_db started with {date=}')
+        logger.info(f'function get_data_from_db started with {date=}')
 
-            nutrition = session.query(Nutrition).filter(Nutrition.date == date,
-                                                        Nutrition.user_id == user_id).first()
+        nutrition = session.query(Nutrition).filter(Nutrition.date == date,
+                                                    Nutrition.user_id == user_id).first()
 
-            if nutrition:
-                return f"Дата: {nutrition.date}\n" \
-                       f"Жиры: {nutrition.fat} гр.\n" \
-                       f"Белки: {nutrition.protein} гр.\n" \
-                       f"Углеводы: {nutrition.carbs} гр.\n" \
-                       f"Калории: {nutrition.calories} Ккал.\n" \
-                       f"({nutrition.text})"
-            else:
-                return "Нет данных для этой даты."
-
-        except ValueError:
-            return "Ошибка: дата должна быть в формате ДД.ММ.ГГ."
+        if nutrition:
+            return f"Дата: {nutrition.date}\n" \
+                   f"Жиры: {nutrition.fat} гр.\n" \
+                   f"Белки: {nutrition.protein} гр.\n" \
+                   f"Углеводы: {nutrition.carbs} гр.\n" \
+                   f"Калории: {nutrition.calories} Ккал.\n" \
+                   f"({nutrition.text})"
+        else:
+            return "Нет данных для этой даты."

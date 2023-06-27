@@ -7,7 +7,7 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "run.py"]
+CMD ["python", "run_new.py"]
 
 
 
