@@ -90,7 +90,7 @@ def food_request_handler(update: Update, context: CallbackContext, entities) -> 
                 logger.info(f'function food_request_handler change {word=} to {date_obj=} with type {type(date_obj)}')
                 break
     else:
-        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date()
+        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date() if type(entities['date-time']) is list else entities['date-time']
 
 
     logger.info(f'processing message: {message_text} from user {user_id} with {date_obj=}')
@@ -109,14 +109,14 @@ def food_request_handler(update: Update, context: CallbackContext, entities) -> 
 def get_data_from_db_handler(update, context, entities):
     user_id = update.effective_user.id
     try:
-        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date()
+        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date() if type(entities['date-time']) is list else entities['date-time']
         logger.info(f'processing date request from user {user_id} with {date_obj=}')
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
     except Exception as e:
         logger.info(f'error in get_data_from_db_handler: {e}')
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text='Не получилось внести данные. Попробуйте написать дату по-другому')
+                                 text='Не получилось извлечь данные. Попробуйте написать дату по-другому')
 
 def text_message_handler(update: Update, context: CallbackContext) -> None:
     text = update.message.text
