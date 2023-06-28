@@ -25,7 +25,6 @@ def donate(update: Update, context: CallbackContext) -> None:
     suggested_tips = [9900, 19900, 39900]
     max_tip = max(suggested_tips)
     context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips)
-    # context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, start_parameter=None, photo_url=None, photo_size=None, photo_width=None, photo_height=None, need_name=None, need_phone_number=None, need_email=None, need_shipping_address=None, is_flexible=None, disable_notification=None, reply_to_message_id=None, reply_markup=None, provider_data=None, send_phone_number_to_provider=None, send_email_to_provider=None, timeout=None, api_kwargs=None, allow_sending_without_reply=None, max_tip_amount=None, suggested_tip_amounts=None)
 
 
 def precheckout_callback(update: Update, context: CallbackContext) -> None:
@@ -99,12 +98,13 @@ def extract_date_from_message(message_text: str):
 
 def start(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
     logger.info(f'function start started with {user_id=}')
-    user = get_user(user_id)
+    user = get_user(user_id, chat_id)
     if not user:
-        add_user(user_id)
+        add_user(user_id, chat_id)
         logger.info(f"User {user_id} is joined", extra={"special": True})
-    context.bot.send_message(chat_id=update.effective_chat.id, text=START_MESSAGE)
+    context.bot.send_message(chat_id=chat_id, text=START_MESSAGE)
 
 
 def start_for_date(update: Update, context: CallbackContext) -> int:

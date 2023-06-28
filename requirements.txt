@@ -5,3 +5,5 @@ python-telegram-bot==13.7
 psycopg2-binary
 loguru
 dateparser
+google-cloud-dialogflow
+google-auth
