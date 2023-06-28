@@ -1,5 +1,6 @@
 from google.cloud import dialogflow_v2 as dialogflow
 from google.oauth2 import service_account
+from dateutil.parser import parse
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler, PreCheckoutQueryHandler
@@ -12,6 +13,13 @@ from sql import (get_data_from_db, add_entry, reset_block_and_counter,
 # dialogflow_session_client = dialogflow.SessionsClient.from_service_account_json('api-project-890914834324-6e96726a8ee0.json')
 credentials = service_account.Credentials.from_service_account_info(DIALOGFLOW_API_KEY)
 dialogflow_session_client = dialogflow.SessionsClient(credentials=credentials)
+
+
+def get_date(date_obj) -> datetime.date:
+    if not isinstance(date_obj, str):
+        date_obj = date_obj[0]  # берем первый элемент из списка
+    date_time_obj = parse(date_obj)
+    return date_time_obj.date()
 
 
 def feedback(update: Update, context: CallbackContext) -> None:
@@ -90,14 +98,17 @@ def food_request_handler(update: Update, context: CallbackContext, entities) -> 
                 logger.info(f'function food_request_handler change {word=} to {date_obj=} with type {type(date_obj)}')
                 break
     else:
-        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date() if type(entities['date-time']) is list else entities['date-time']
-
-
+        date_obj = get_date(entities.get('date-time'))
     logger.info(f'processing message: {message_text} from user {user_id} with {date_obj=}')
     if requests_count(user_id) <= RATE_LIMIT:
         try:
             json_data = get_nutrition_info(message_text)
-            message = add_entry(user_id, json_data, date_obj)
+            if isinstance(json_data, str):
+                message = json_data
+            elif json_data:
+                message = add_entry(user_id, json_data, date_obj)
+            else:
+                message = 'Ой, кажется, я не распознал никакой еды в сообщении, или вы хотели получить отчет, но я не понял. Пожалуйста, попробуйте использовать в вашей фразе слова "результат" или "итого"'
         except Exception as e:
             logger.error(f'Error from chatgpt_utils {e}')
             message = f'К сожалению, не получилось рассчитать калорийность. Попробуйте описать продукты иначе, или, если это напиток, укажите его калорийность, и я подсчитаю содержание углеводов.'
@@ -109,7 +120,7 @@ def food_request_handler(update: Update, context: CallbackContext, entities) -> 
 def get_data_from_db_handler(update, context, entities):
     user_id = update.effective_user.id
     try:
-        date_obj = datetime.strptime(entities['date-time'][0], "%Y-%m-%dT%H:%M:%S%z").date() if type(entities['date-time']) is list else entities['date-time']
+        date_obj = get_date(entities.get('date-time'))
         logger.info(f'processing date request from user {user_id} with {date_obj=}')
         data = get_data_from_db(user_id, date_obj)
         context.bot.send_message(chat_id=update.effective_chat.id, text=data)
@@ -122,7 +133,7 @@ def get_data_from_db_handler(update, context, entities):
 def food_smalltalk(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     message_text = update.message.text
-    logger.info(f'function nutrition_info started with {message_text=}')
+    logger.info(f'function food_smalltalk started with {message_text=}')
     if requests_count(user_id) <= RATE_LIMIT:
         try:
             message = get_food_smalltalk_answer(message_text)

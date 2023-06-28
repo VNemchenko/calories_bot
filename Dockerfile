@@ -9,7 +9,3 @@ RUN pip install --find-links=/packages -r requirements.txt
 COPY . .
 
 CMD ["python", "run_new.py"]
-
-
-
-

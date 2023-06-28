@@ -26,7 +26,6 @@ FORM_URL = 'https://forms.gle/E4eePqeA6XXww3Pr5'
 FOR_DATE = range(1)
 RATE_LIMIT = int(os.getenv('RATE_LIMIT'))
 SECRET_WORD = os.getenv('SECRET_WORD')
-ADMIN_ID = int(os.getenv('ADMIN_ID'))
 
 DIALOGFLOW_API_KEY = {
     "type": "service_account",

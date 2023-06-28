@@ -7,3 +7,4 @@ loguru
 dateparser
 google-cloud-dialogflow
 google-auth
+python-dateutil
