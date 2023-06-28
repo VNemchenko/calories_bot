@@ -55,3 +55,16 @@ def get_nutrition_info(prompt):
             if not isinstance(json_data[key], str):
                 raise ValueError(f"Value for 'text' should be a string")
     return json_data
+
+
+def get_food_smalltalk_answer(prompt):
+    response = openai.ChatCompletion.create(
+        model=MODEL_3,
+        messages=[
+            {"role": "system", "content": '''Если вопрос относится к теме питания, еды, спорта или диеты, то ответь так, как бы ответил диетолог со стажем работы 20 лет. Если вопрос по другой теме, то ответь что ты пока не можешь отвечать на вопросы, которые не касаются питания, спорта или диеты'''},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    answer_string = response.choices[0].message.content
+    logger.info(f'function get_food_smalltalk_answer answer from API {answer_string=}')
+    return answer_string

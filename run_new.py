@@ -5,7 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Labeled
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler, PreCheckoutQueryHandler
 
 from config import TELEGRAM_BOT_TOKEN, logger, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT, PROVIDER_TOKEN, INSTRUCT,START_MESSAGE, DIALOGFLOW_API_KEY, PROJECT_ID
-from chatgpt_utils import get_nutrition_info
+from chatgpt_utils import get_nutrition_info, get_food_smalltalk_answer
 from sql import (get_data_from_db, add_entry, reset_block_and_counter,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
 
@@ -118,6 +118,23 @@ def get_data_from_db_handler(update, context, entities):
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text='Не получилось извлечь данные. Попробуйте написать дату по-другому')
 
+
+def food_smalltalk(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id
+    message_text = update.message.text
+    logger.info(f'function nutrition_info started with {message_text=}')
+    if requests_count(user_id) <= RATE_LIMIT:
+        try:
+            message = get_food_smalltalk_answer(message_text)
+        except Exception as e:
+            logger.error(f'Error from chatgpt_utils {e}')
+            message = f'Кажется, вас интересует вопрос по питанию. Сейчас эта функция в разработке, скоро я смогу отвечать на подобные вопросы.'
+    else:
+        message = f'Извините, вы превысили лимит запросов на сегодня'
+        logger.info(f"User {user_id} is reach daily limit", extra={"special": True})
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+
+
 def text_message_handler(update: Update, context: CallbackContext) -> None:
     text = update.message.text
     session_id = f'telegram_{update.effective_user.id}'
@@ -132,6 +149,8 @@ def text_message_handler(update: Update, context: CallbackContext) -> None:
         food_request_handler(update, context, entities)
     elif intent == 'report_for_date':
         get_data_from_db_handler(update, context, entities)
+    elif intent == 'food_smalltalk':
+        food_smalltalk(update, context)
     elif intent == 'donate':
         donate(update, context)
     elif intent == 'champ':
