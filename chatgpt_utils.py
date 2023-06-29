@@ -28,10 +28,10 @@ def get_nutrition_info(prompt):
     response = openai.ChatCompletion.create(
         model=MODEL_3,
         messages=[
-            {"role": "system", "content": '''Прочитай список продуктов ниже и посчитай состав белков, жиров и углеводов. ПОсчитай точно насколько это возможно, при необходимости используй средние размеры продуктов или напитков, игнорируй тот факт что данные могут различаться.'''},
-            {"role": "system", "content": '''Напиши мне ответ джейсоном вида {'fat': 100, 'protein': 100, 'carbs': 100, 'calories': 1000, 'text': 'тут еда и напитки из запроса'}, больше никакой другой информации, не делай никаких дополнительных комментариев или вопросов так как я буду брать твой ответ напрямую в базу данных.'''},
             {"role": "system", "content": '''Если запрос пользователя является вопросом, то ответь словом "вопрос"'''},
             {"role": "system", "content": '''Ответь словом "ошибка", если в сообщении от пользователя не упоминается никакая еда, напитки или питательные вещества'''},
+            {"role": "system", "content": '''Прочитай список продуктов ниже и посчитай состав белков, жиров и углеводов. Посчитай точно насколько это возможно, при необходимости используй средние размеры продуктов или напитков, игнорируй тот факт что данные могут различаться.'''},
+            {"role": "system", "content": '''Напиши мне ответ джейсоном вида {'fat': 100, 'protein': 100, 'carbs': 100, 'calories': 1000, 'text': 'тут еда и напитки из запроса'}, больше никакой другой информации, не делай никаких дополнительных комментариев или вопросов так как я буду брать твой ответ напрямую в базу данных.'''},
             {"role": "user", "content": prompt},
         ],
     )
@@ -50,13 +50,16 @@ def get_nutrition_info(prompt):
     # Проверка ключей и типов данных
     required_keys = ['fat', 'protein', 'carbs', 'calories', 'text']
     for key in required_keys:
+        if key not in json_data:
+            raise ValueError(f"Key '{key}' is missing in the response")
         if key in ['fat', 'protein', 'carbs', 'calories']:
             try:
                 json_data[key] = float(json_data[key])  # Преобразование к float
             except (ValueError, TypeError):
                 raise ValueError(f"Value for '{key}' should be a number and convertible to float")
-        if key not in json_data:
-            return
+        elif key == 'text':
+            if not isinstance(json_data[key], str):
+                raise ValueError(f"Value for 'text' should be a string")
     return json_data
 
 
