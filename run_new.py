@@ -10,7 +10,6 @@ from chatgpt_utils import get_nutrition_info, get_food_smalltalk_answer
 from sql import (get_data_from_db, add_entry, reset_block_and_counter,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
 
-# dialogflow_session_client = dialogflow.SessionsClient.from_service_account_json('api-project-890914834324-6e96726a8ee0.json')
 credentials = service_account.Credentials.from_service_account_info(DIALOGFLOW_API_KEY)
 dialogflow_session_client = dialogflow.SessionsClient(credentials=credentials)
 
@@ -26,7 +25,7 @@ def feedback(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(f'Пожалуйста, оставьте свои отзывы и пожелания здесь: {FORM_URL}')
 
 
-def champ(update: Update) -> None:
+def champ(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     get_user_position(user_id)
     update.message.reply_text(get_user_position(user_id))
@@ -46,11 +45,13 @@ def donate(update: Update, context: CallbackContext) -> None:
     prices = [LabeledPrice("На оплату сервисов и развитие функционала", 9900)]
     suggested_tips = [9900, 19900, 39900]
     max_tip = max(suggested_tips)
-    context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips)
+    response = context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips, need_email=True, send_email_to_provider=True)
+    logger.info(f"donate invoice sended {response.invoice=}")
 
 
 def precheckout_callback(update: Update, context: CallbackContext) -> None:
     query = update.pre_checkout_query
+    logger.info(f"precheckout_callback start with {query=}")
     if query.invoice_payload != 'Calories-Payload':
         logger.info(f"precheckout_callback fail {query.invoice_payload=}")
         context.bot.answer_pre_checkout_query(pre_checkout_query_id=query.id, ok=False,
@@ -165,7 +166,7 @@ def text_message_handler(update: Update, context: CallbackContext) -> None:
     elif intent == 'donate':
         donate(update, context)
     elif intent == 'champ':
-        champ(update)
+        champ(update, context)
     else:
         update.message.reply_text(response.query_result.fulfillment_text)
 
@@ -176,6 +177,7 @@ def main():
     dispatcher = updater.dispatcher
 
     # Команды
+    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("feedback", feedback))
     dispatcher.add_handler(CommandHandler("donate", donate))
@@ -184,7 +186,6 @@ def main():
 
     # Сообщения
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, text_message_handler))
-    dispatcher.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     dispatcher.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
 
     updater.start_polling()
