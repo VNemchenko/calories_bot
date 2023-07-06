@@ -45,7 +45,7 @@ def donate(update: Update, context: CallbackContext) -> None:
     prices = [LabeledPrice("На оплату сервисов и развитие функционала", 9900)]
     suggested_tips = [9900, 19900, 39900]
     max_tip = max(suggested_tips)
-    response = context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips, need_email=True, send_email_to_provider=True)
+    response = context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips, need_email=False, send_email_to_provider=False)
     logger.info(f"donate invoice sended {response.invoice=}")
 
 
