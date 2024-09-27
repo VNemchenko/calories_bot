@@ -47,7 +47,7 @@ jobs:
           if [ "${{ steps.set-env.outputs.ENV }}" == "stage" ]; then
             CONTAINER_NAME=calories_bot_stage
           else
-            CONTAINER_NAME=calories_bot_prod
+            CONTAINER_NAME=calories_bot
           fi
           
           # Удаление старого контейнера для текущего окружения
