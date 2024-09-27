@@ -43,52 +43,36 @@ jobs:
         ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           cd /var/www/calories_bot
           
-          # Удаление старого контейнера
-          docker rm -f calories_bot || true
+          # Определение имени контейнера в зависимости от окружения
+          if [ "${{ steps.set-env.outputs.ENV }}" == "stage" ]; then
+            CONTAINER_NAME=calories_bot_stage
+          else
+            CONTAINER_NAME=calories_bot_prod
+          fi
+          
+          # Удаление старого контейнера для текущего окружения
+          docker rm -f $CONTAINER_NAME || true
           
           # Сборка нового контейнера
-          docker build -t calories_bot .
+          docker build -t $CONTAINER_NAME .
 
           # Запуск нового контейнера с переменными из GitHub Secrets
-          if [ "${{ steps.set-env.outputs.ENV }}" == "stage" ]; then
-            docker run -d --name calories_bot \
-              -e OPENAI_API_KEY=${{ secrets.STAGE_OPENAI_API_KEY }} \
-              -e TELEGRAM_BOT_TOKEN=${{ secrets.STAGE_TELEGRAM_BOT_TOKEN }} \
-              -e PROVIDER_TOKEN=${{ secrets.STAGE_PROVIDER_TOKEN }} \
-              -e DATABASE=${{ secrets.STAGE_DB_NAME }} \
-              -e DB_USER=${{ secrets.DB_USER }} \
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e HOST=${{ secrets.SERVER_IP }} \
-              -e LOG_ENV=stage \
-              -e RATE_LIMIT=2 \
-              -e SECRET_WORD=${{ secrets.SECRET_WORD }} \
-              -e GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }} \
-              -e PRIVATE_KEY_ID=${{ secrets.PRIVATE_KEY_ID }} \
-              -e PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}" \
-              -e CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }} \
-              -e CLIENT_ID=${{ secrets.CLIENT_ID }} \
-              -e CERT_URL=${{ secrets.CERT_URL }} \
-              -e PROJECT_ID=${{ secrets.PROJECT_ID }} \
-              calories_bot
-          else
-            docker run -d --name calories_bot \
-              -e OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }} \
-              -e TELEGRAM_BOT_TOKEN=${{ secrets.PROD_TELEGRAM_BOT_TOKEN }} \
-              -e PROVIDER_TOKEN=${{ secrets.PROD_PROVIDER_TOKEN }} \
-              -e DATABASE=${{ secrets.PROD_DB_NAME }} \
-              -e DB_USER=${{ secrets.DB_USER }} \
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e HOST=${{ secrets.SERVER_IP }} \
-              -e LOG_ENV=prod \
-              -e RATE_LIMIT=50 \
-              -e SECRET_WORD=${{ secrets.SECRET_WORD }} \
-              -e GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }} \
-              -e PRIVATE_KEY_ID=${{ secrets.PRIVATE_KEY_ID }} \
-              -e PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}" \
-              -e CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }} \
-              -e CLIENT_ID=${{ secrets.CLIENT_ID }} \
-              -e CERT_URL=${{ secrets.CERT_URL }} \
-              -e PROJECT_ID=${{ secrets.PROJECT_ID }} \
-              calories_bot
-          fi
+          docker run -d --name $CONTAINER_NAME \
+            -e OPENAI_API_KEY=${{ secrets[steps.set-env.outputs.ENV]_OPENAI_API_KEY }} \
+            -e TELEGRAM_BOT_TOKEN=${{ secrets[steps.set-env.outputs.ENV]_TELEGRAM_BOT_TOKEN }} \
+            -e PROVIDER_TOKEN=${{ secrets[steps.set-env.outputs.ENV]_PROVIDER_TOKEN }} \
+            -e DATABASE=${{ secrets[steps.set-env.outputs.ENV]_DB_NAME }} \
+            -e DB_USER=${{ secrets.DB_USER }} \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e HOST=${{ secrets.SERVER_IP }} \
+            -e LOG_ENV=${{ steps.set-env.outputs.ENV }} \
+            -e RATE_LIMIT=${{ secrets[steps.set-env.outputs.ENV]_RATE_LIMIT }} \
+            -e SECRET_WORD=${{ secrets.SECRET_WORD }} \
+            -e GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }} \
+            -e PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}" \
+            -e CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }} \
+            -e CLIENT_ID=${{ secrets.CLIENT_ID }} \
+            -e CERT_URL=${{ secrets.CERT_URL }} \
+            -e PROJECT_ID=${{ secrets.PROJECT_ID }} \
+            $CONTAINER_NAME
         EOF
