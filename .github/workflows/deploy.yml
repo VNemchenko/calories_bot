@@ -35,7 +35,7 @@ jobs:
     # Шаг 4: Копирование файлов на сервер
     - name: Copy files to server
       run: |
-        scp -r -o StrictHostKeyChecking=no . ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/calories_bot
+        scp -r -o StrictHostKeyChecking=no * ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/calories_bot
 
     # Шаг 5: Деплой на сервере с использованием переменных окружения из GitHub Secrets
     - name: Deploy on server
