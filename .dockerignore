@@ -5,6 +5,7 @@ __pycache__
 *.log
 .DS_Store
 .env
+.prod_env
 .git
 .gitignore
 tests/
