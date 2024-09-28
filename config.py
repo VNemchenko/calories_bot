@@ -1,12 +1,11 @@
 import os
+import sys
 from loguru import logger
 from datetime import datetime, timedelta
 
 
-if os.getenv('LOG_ENV') == "stage":
-    logger.add(f"/app/logs/calories_bot_stage.log", rotation="3 day", format="{time} {level} {message}", level="INFO")
-else:
-    logger.add(f"/app/logs/calories_bot.log", rotation="3 day", format="{time} {level} {message}", level="INFO")
+logger.add(sys.stdout, format="", level="INFO")
+logger.add(f"/app/logs/calories_bot.log", rotation="3 day", format="{time} {level} {message}", level="INFO")
 
 logger.add("/app/logs/special_calories.log", format="{time} {level} {message}", level="INFO", filter=lambda record: record["extra"].get("special"))
 
