@@ -29,7 +29,7 @@ jobs:
         if [[ "${GITHUB_REF}" == *-stage ]]; then
           echo "::set-output name=ENV::stage"
         elif [[ "${GITHUB_REF}" == *-prod ]]; then
-          echo "::set-output name=prod"
+          echo "::set-output name=ENV::prod"
         fi
 
     # Шаг 4: Копирование файлов на сервер
