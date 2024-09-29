@@ -46,7 +46,6 @@ jobs:
           # Определение имени контейнера в зависимости от окружения
           if [ "${{ steps.set-env.outputs.ENV }}" == "stage" ]; then
             CONTAINER_NAME=calories_bot_stage
-            OPENAI_API_KEY=${{ secrets.STAGE_OPENAI_API_KEY }}
             TELEGRAM_BOT_TOKEN=${{ secrets.STAGE_TELEGRAM_BOT_TOKEN }}
             PROVIDER_TOKEN=${{ secrets.STAGE_PROVIDER_TOKEN }}
             DATABASE=${{ secrets.STAGE_DB_NAME }}
@@ -54,7 +53,6 @@ jobs:
             LOG_ENV=stage
           else
             CONTAINER_NAME=calories_bot_prod
-            OPENAI_API_KEY=${{ secrets.PROD_OPENAI_API_KEY }}
             TELEGRAM_BOT_TOKEN=${{ secrets.PROD_TELEGRAM_BOT_TOKEN }}
             PROVIDER_TOKEN=${{ secrets.PROD_PROVIDER_TOKEN }}
             DATABASE=${{ secrets.PROD_DB_NAME }}
@@ -70,7 +68,7 @@ jobs:
 
           # Запуск нового контейнера с переменными
           docker run -d --name $CONTAINER_NAME \
-            -e OPENAI_API_KEY=$OPENAI_API_KEY \
+            -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
             -e TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN \
             -e PROVIDER_TOKEN=$PROVIDER_TOKEN \
             -e DATABASE=$DATABASE \
