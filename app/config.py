@@ -12,7 +12,6 @@ logger.add("/app/logs/special_calories.log", format="{time} {level} {message}", 
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-PROVIDER_TOKEN = os.getenv('PROVIDER_TOKEN')
 HOST = os.getenv('HOST')
 DATABASE = os.getenv('DATABASE')
 DB_USER = os.getenv('DB_USER')

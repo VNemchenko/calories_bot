@@ -2,10 +2,10 @@ from google.cloud import dialogflow_v2 as dialogflow
 from google.oauth2 import service_account
 from dateutil.parser import parse
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler, ConversationHandler, PreCheckoutQueryHandler
+from telegram import Update, LabeledPrice
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, PreCheckoutQueryHandler
 
-from config import TELEGRAM_BOT_TOKEN, logger, datetime, WORDS_TO_DATES, FORM_URL,RATE_LIMIT, PROVIDER_TOKEN, INSTRUCT,START_MESSAGE, DIALOGFLOW_API_KEY, PROJECT_ID
+from config import TELEGRAM_BOT_TOKEN, logger, datetime, WORDS_TO_DATES, FORM_URL, RATE_LIMIT, INSTRUCT, START_MESSAGE, DIALOGFLOW_API_KEY, PROJECT_ID
 from chatgpt_utils import get_nutrition_info, get_food_smalltalk_answer
 from sql import (get_data_from_db, add_entry, reset_block_and_counter,
                  get_user, add_user, update_payment_date, get_user_position, requests_count)
