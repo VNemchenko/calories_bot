@@ -6,6 +6,6 @@ COPY requirements.txt requirements.txt
 COPY ./packages /packages
 RUN pip install --find-links=/packages -r requirements.txt
 
-COPY . .
+COPY app .
 
-CMD ["python", "run_new.py"]
+CMD ["python", "/app/run_new.py"]

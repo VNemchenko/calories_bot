@@ -52,7 +52,6 @@ tests/
 *.pytest_cache/
 
 # Docker
-deploy.sh
 #*.dockerignore
 #Dockerfile
 #docker-compose.yml

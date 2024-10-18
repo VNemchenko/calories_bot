@@ -32,6 +32,14 @@ jobs:
           echo "::set-output name=ENV::prod"
         fi
 
+    # Шаг 3.5: Удалиние и создание папки
+    - name: Remove and create project directory on server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "
+          rm -rf /var/www/calories_bot &&
+          mkdir -p /var/www/calories_bot
+        "
+
     # Шаг 4: Копирование файлов на сервер
     - name: Copy files to server
       run: |

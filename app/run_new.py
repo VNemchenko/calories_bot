@@ -40,12 +40,11 @@ def donate(update: Update, context: CallbackContext) -> None:
     title = "Пожертвование"
     description = "Поддержите разработчика"
     payload = "Calories-Payload"  # this is optional
-    provider_token = PROVIDER_TOKEN
-    currency = "RUB"
-    prices = [LabeledPrice("На оплату сервисов и развитие функционала", 9900)]
-    suggested_tips = [9900, 19900, 39900]
-    max_tip = max(suggested_tips)
-    response = context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, max_tip_amount=max_tip, suggested_tip_amounts=suggested_tips, need_email=False, send_email_to_provider=False)
+    provider_token = ""
+    currency = "XTR"
+    prices = [LabeledPrice("На оплату сервисов и развитие функционала", 250)]
+    suggested_tips = [250, 500, 1000]
+    response = context.bot.send_invoice(chat_id, title, description, payload, provider_token, currency, prices, suggested_tip_amounts=suggested_tips, need_email=False, send_email_to_provider=False)
     logger.info(f"donate invoice sended {response.invoice=}")
 
 
@@ -64,7 +63,7 @@ def successful_payment_callback(update: Update, context: CallbackContext) -> Non
     user_id = update.effective_user.id
     successful_payment = update.message.successful_payment
     transaction_id = successful_payment.provider_payment_charge_id
-    total_amount = successful_payment.total_amount/100
+    total_amount = successful_payment.total_amount
     currency = successful_payment.currency
     logger.info(f"Payment successful! Transaction ID: {transaction_id} from {user_id=}")
     logger.info(f"User {user_id} is donate {total_amount} {currency}", extra={"special": True})
