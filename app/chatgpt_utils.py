@@ -1,10 +1,10 @@
-import openai
+from openai import OpenAI
 import json
 
 from config import OPENAI_API_KEY, logger
 from decorators import retry
 
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 MODEL = 'gpt-4o-mini'
 
 nutrition_function = {
@@ -33,7 +33,7 @@ def get_nutrition_info(prompt):
         "Ответь JSON-объектом, соответствующим функции 'get_nutrition_info'."
     )
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": system_message},
@@ -46,9 +46,9 @@ def get_nutrition_info(prompt):
     message = response.choices[0].message
     logger.info(f'function get_nutrition_info answer from API {message=}')
 
-    if message.get("function_call"):
-        function_call = message["function_call"]
-        arguments = function_call.get("arguments", "{}")
+    if message.function_call:
+        function_call = message.function_call
+        arguments = function_call.arguments or "{}"
         try:
             json_data = json.loads(arguments)
         except json.JSONDecodeError:
@@ -68,7 +68,7 @@ def get_nutrition_info(prompt):
                     raise ValueError(f"Value for 'text' should be a string")
         return json_data
     else:
-        content = message.get("content", "")
+        content = message.content or ""
         if 'ошибка' in content.lower():
             return None
         elif 'вопрос' in content.lower():
@@ -83,7 +83,7 @@ def get_food_smalltalk_answer(prompt):
         "отвечать на вопросы, которые не касаются питания, спорта или диеты."
     )
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": system_message},
