@@ -1,4 +1,17 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, desc, func, select, Boolean
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Date,
+    desc,
+    func,
+    select,
+    Boolean,
+    inspect,
+    text,
+)
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config import HOST, DATABASE, DB_USER, DB_PASSWORD, logger, datetime
 
@@ -28,6 +41,21 @@ class Nutrition(Base):
     text = Column(String)
 
 Base.metadata.create_all(engine)
+
+
+def _ensure_columns_exist():
+    """Ensure new columns exist in the database for backwards compatibility."""
+    inspector = inspect(engine)
+    if "users" in inspector.get_table_names():
+        columns = {col["name"] for col in inspector.get_columns("users")}
+        with engine.connect() as conn:
+            if "timezone" not in columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN timezone VARCHAR DEFAULT 'UTC'"))
+            if "last_reminder_date" not in columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_reminder_date DATE"))
+
+
+_ensure_columns_exist()
 
 def reset_block_and_counter():
     with Session() as session:
