@@ -14,6 +14,8 @@ class User(Base):
     last_payment_date = Column(DateTime)
     request_count = Column(Integer, default=0)
     is_vip = Column(Boolean, default=False)
+    timezone = Column(String, default='UTC')
+    last_reminder_date = Column(Date)
 
 class Nutrition(Base):
     __tablename__ = 'nutrition'
@@ -104,7 +106,7 @@ def add_user(user_id, chat_id):  # добавляем chat_id как аргум�
     logger.info(f'function add_user started. Type of user is {type(user_id)}')
     with Session() as session:
         date = datetime.now()
-        new_user = User(user_id=user_id, chat_id=chat_id, start_date=date, last_payment_date=date)  # передаем chat_id в User
+        new_user = User(user_id=user_id, chat_id=chat_id, start_date=date, last_payment_date=date)
         session.add(new_user)
         session.commit()
 
@@ -115,6 +117,27 @@ def get_chat_ids() -> list:
         # преобразуем результат в список для удобства
         chat_ids = [chat_id[0] for chat_id in chat_ids]
     return chat_ids
+
+
+def update_user_timezone(user_id, timezone: str):
+    with Session() as session:
+        user = session.query(User).filter(User.user_id == user_id).first()
+        if user:
+            user.timezone = timezone
+            session.commit()
+
+
+def get_all_users():
+    with Session() as session:
+        return session.query(User).all()
+
+
+def has_entry_for_date(user_id, date):
+    with Session() as session:
+        return session.query(Nutrition).filter(
+            Nutrition.user_id == user_id,
+            Nutrition.date == date
+        ).count() > 0
 
 
 def update_payment_date(user_id):

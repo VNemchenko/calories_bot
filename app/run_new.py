@@ -1,14 +1,29 @@
 from google.cloud import dialogflow_v2 as dialogflow
 from google.oauth2 import service_account
 from dateutil.parser import parse
+from zoneinfo import ZoneInfo
 
 from telegram import Update, LabeledPrice
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, PreCheckoutQueryHandler
 
 from config import TELEGRAM_BOT_TOKEN, logger, datetime, WORDS_TO_DATES, FORM_URL, RATE_LIMIT, INSTRUCT, START_MESSAGE, DIALOGFLOW_API_KEY, PROJECT_ID
 from chatgpt_utils import get_nutrition_info, get_food_smalltalk_answer
-from sql import (get_data_from_db, add_entry, reset_block_and_counter,
-                 get_user, add_user, update_payment_date, get_user_position, requests_count)
+from sql import (
+    get_data_from_db,
+    add_entry,
+    reset_block_and_counter,
+    get_user,
+    add_user,
+    update_payment_date,
+    get_user_position,
+    requests_count,
+    update_user_timezone,
+    get_all_users,
+    has_entry_for_date,
+    Session,
+    User,
+    Nutrition,
+)
 
 credentials = service_account.Credentials.from_service_account_info(DIALOGFLOW_API_KEY)
 dialogflow_session_client = dialogflow.SessionsClient(credentials=credentials)
@@ -33,6 +48,24 @@ def champ(update: Update, context: CallbackContext) -> None:
 
 def instruct(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(INSTRUCT)
+
+
+def set_timezone(update: Update, context: CallbackContext) -> None:
+    if not context.args:
+        update.message.reply_text(
+            'Используйте команду в формате /timezone Europe/Moscow'
+        )
+        return
+    tz_name = context.args[0]
+    try:
+        ZoneInfo(tz_name)
+    except Exception:
+        update.message.reply_text(
+            'Часовой пояс не распознан. Пример: Europe/Moscow'
+        )
+        return
+    update_user_timezone(update.effective_user.id, tz_name)
+    update.message.reply_text(f'Часовой пояс установлен на {tz_name}')
 
 
 def donate(update: Update, context: CallbackContext) -> None:
@@ -79,6 +112,22 @@ def start(update: Update, context: CallbackContext) -> None:
         add_user(user_id, chat_id)
         logger.info(f"User {user_id} is joined", extra={"special": True})
     context.bot.send_message(chat_id=chat_id, text=START_MESSAGE)
+
+
+def reminder_job(context: CallbackContext) -> None:
+    with Session() as session:
+        users = session.query(User).all()
+        for user in users:
+            tz = ZoneInfo(user.timezone or 'UTC')
+            user_now = datetime.now(tz)
+            if user_now.hour == 21 and user.last_reminder_date != user_now.date():
+                if not session.query(Nutrition).filter(Nutrition.user_id == user.user_id, Nutrition.date == user_now.date()).first():
+                    context.bot.send_message(
+                        chat_id=user.chat_id,
+                        text='Не забудьте записать приёмы пищи за сегодня!'
+                    )
+                    user.last_reminder_date = user_now.date()
+        session.commit()
 
 
 
@@ -181,10 +230,14 @@ def main():
     dispatcher.add_handler(CommandHandler("donate", donate))
     dispatcher.add_handler(CommandHandler("instruct", instruct))
     dispatcher.add_handler(CommandHandler("champ", champ))
+    dispatcher.add_handler(CommandHandler("timezone", set_timezone))
 
     # Сообщения
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, text_message_handler))
     dispatcher.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
+
+    job_queue = updater.job_queue
+    job_queue.run_repeating(reminder_job, interval=900, first=0)
 
     updater.start_polling()
 
