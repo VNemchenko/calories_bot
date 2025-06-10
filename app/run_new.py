@@ -1,7 +1,7 @@
 from google.cloud import dialogflow_v2 as dialogflow
 from google.oauth2 import service_account
 from dateutil.parser import parse
-from zoneinfo import ZoneInfo
+from datetime import timezone, timedelta
 
 from telegram import Update, LabeledPrice
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, PreCheckoutQueryHandler
@@ -53,19 +53,23 @@ def instruct(update: Update, context: CallbackContext) -> None:
 def set_timezone(update: Update, context: CallbackContext) -> None:
     if not context.args:
         update.message.reply_text(
-            'Используйте команду в формате /timezone Europe/Moscow'
+            'Укажите смещение от UTC. Пример: /timezone +3 (для Москвы)'
         )
         return
-    tz_name = context.args[0]
+
+    tz_offset_str = context.args[0]
     try:
-        ZoneInfo(tz_name)
-    except Exception:
+        if not tz_offset_str.startswith(('+', '-')):
+            raise ValueError
+        offset_hours = int(tz_offset_str)
+    except ValueError:
         update.message.reply_text(
-            'Часовой пояс не распознан. Пример: Europe/Moscow'
+            'Часовой пояс не распознан. Пример: /timezone +3'
         )
         return
-    update_user_timezone(update.effective_user.id, tz_name)
-    update.message.reply_text(f'Часовой пояс установлен на {tz_name}')
+
+    update_user_timezone(update.effective_user.id, tz_offset_str)
+    update.message.reply_text(f'Часовой пояс установлен на {tz_offset_str}')
 
 
 def donate(update: Update, context: CallbackContext) -> None:
@@ -118,7 +122,11 @@ def reminder_job(context: CallbackContext) -> None:
     with Session() as session:
         users = session.query(User).all()
         for user in users:
-            tz = ZoneInfo(user.timezone or 'UTC')
+            try:
+                offset_hours = int(user.timezone)
+            except (TypeError, ValueError):
+                offset_hours = 0
+            tz = timezone(timedelta(hours=offset_hours))
             user_now = datetime.now(tz)
             if user_now.hour == 21 and user.last_reminder_date != user_now.date():
                 if not session.query(Nutrition).filter(Nutrition.user_id == user.user_id, Nutrition.date == user_now.date()).first():

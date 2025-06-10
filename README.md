@@ -61,3 +61,5 @@ The following environment variables need to be set in your system:
 To use this bot, send a message to the bot with the description of the food intake. The bot will then respond with the nutrition information (fat, protein, carbohydrates, and calories).
 
 You can also send a date in the format `DD.MM.YY` to get the total nutrition information for that date.
+
+To adjust reminder times, you can set your timezone offset using `/timezone`. The bot expects a number with a plus or minus sign, for example `/timezone +3` for Moscow.
