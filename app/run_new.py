@@ -51,25 +51,28 @@ def instruct(update: Update, context: CallbackContext) -> None:
 
 
 def set_timezone(update: Update, context: CallbackContext) -> None:
-    if not context.args:
-        update.message.reply_text(
-            'Укажите смещение от UTC. Пример: /timezone +3 (для Москвы)'
-        )
+    """Initiate timezone setting or set timezone from command argument."""
+    if context.args:
+        tz_offset_str = context.args[0]
+        try:
+            # support both formats: '+3' or '3'
+            if tz_offset_str.startswith(('+', '-')):
+                offset_hours = int(tz_offset_str)
+            else:
+                offset_hours = int(tz_offset_str)
+            tz_offset_str = str(offset_hours)
+        except ValueError:
+            update.message.reply_text(
+                'Часовой пояс не распознан. Пример: /timezone +3'
+            )
+            return
+
+        update_user_timezone(update.effective_user.id, tz_offset_str)
+        update.message.reply_text(f'Часовой пояс установлен на {tz_offset_str}')
         return
 
-    tz_offset_str = context.args[0]
-    try:
-        if not tz_offset_str.startswith(('+', '-')):
-            raise ValueError
-        offset_hours = int(tz_offset_str)
-    except ValueError:
-        update.message.reply_text(
-            'Часовой пояс не распознан. Пример: /timezone +3'
-        )
-        return
-
-    update_user_timezone(update.effective_user.id, tz_offset_str)
-    update.message.reply_text(f'Часовой пояс установлен на {tz_offset_str}')
+    context.user_data['awaiting_timezone'] = True
+    update.message.reply_text('Укажите смещение от UTC. Например 3 или -2')
 
 
 def donate(update: Update, context: CallbackContext) -> None:
@@ -203,7 +206,24 @@ def food_smalltalk(update: Update, context: CallbackContext) -> None:
 
 
 def text_message_handler(update: Update, context: CallbackContext) -> None:
-    text = update.message.text
+    text = update.message.text.strip()
+
+    if context.user_data.get('awaiting_timezone'):
+        try:
+            if text.startswith(('+', '-')):
+                offset_hours = int(text)
+            else:
+                offset_hours = int(text)
+            tz_offset_str = str(offset_hours)
+        except ValueError:
+            update.message.reply_text('Часовой пояс не распознан. Введите число, например 3 или -2')
+            return
+
+        update_user_timezone(update.effective_user.id, tz_offset_str)
+        update.message.reply_text(f'Часовой пояс установлен на {tz_offset_str}')
+        context.user_data.pop('awaiting_timezone')
+        return
+
     session_id = f'telegram_{update.effective_user.id}'
     session = dialogflow_session_client.session_path(PROJECT_ID, session_id)
     text_input = dialogflow.types.TextInput(text=text, language_code='ru-RU')

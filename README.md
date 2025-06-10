@@ -62,4 +62,4 @@ To use this bot, send a message to the bot with the description of the food inta
 
 You can also send a date in the format `DD.MM.YY` to get the total nutrition information for that date.
 
-To adjust reminder times, you can set your timezone offset using `/timezone`. The bot expects a number with a plus or minus sign, for example `/timezone +3` for Moscow.
+To adjust reminder times, send `/timezone` and then reply with the offset value (e.g. `3` or `-2`). You can still use `/timezone +3` in one message if you prefer.
